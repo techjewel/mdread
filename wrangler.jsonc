@@ -2,11 +2,12 @@
   // mdread — static site served from Cloudflare Workers Assets.
   // No backend, no build step: the ./public folder IS the app.
   //
-  // Forking? Change "name" to your own, and either remove the "routes"
-  // block (to use the free *.workers.dev URL) or point it at a domain you own.
-  // Your Cloudflare account is auto-selected on `wrangler deploy`; if you have
-  // more than one, set the CLOUDFLARE_ACCOUNT_ID environment variable.
+  // Forking? Change "name" + "account_id" to your own, and either remove the
+  // "routes" block (to use the free *.workers.dev URL) or point it at a domain
+  // you own. account_id is an identifier, not a secret — it's useless without an
+  // API token. Find yours with `wrangler whoami` or in the Cloudflare dashboard.
   "name": "mdread",
+  "account_id": "bc1a1c44574db2c6033e81bbc745abd0",
   "compatibility_date": "2025-01-01",
   // instant-access *.workers.dev URL (works while the custom-domain cert provisions)
   "workers_dev": true,
