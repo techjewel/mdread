@@ -1,0 +1,31 @@
+# mdread — https://mdread.app
+# A local-first markdown reader. Open to all crawlers, including AI.
+
+User-agent: *
+Allow: /
+# Content usage preferences — https://contentsignals.org/
+Content-Signal: ai-train=yes, search=yes, ai-input=yes
+
+# Explicit entries for common AI crawlers (all allowed)
+User-agent: GPTBot
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-Web
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+Sitemap: https://mdread.app/sitemap.xml
