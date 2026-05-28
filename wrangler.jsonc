@@ -5,14 +5,15 @@
   //   npm run deploy        → publishes to a free *.workers.dev URL  (what forks get)
   //   npm run deploy:prod   → publishes to the custom domain below   (maintainer)
   //
-  // Your Cloudflare account is supplied at deploy time, not hardcoded:
-  //   - interactive:     run `wrangler login`
-  //   - non-interactive: set CLOUDFLARE_ACCOUNT_ID (e.g. a CI secret)
-  // Find your id with `wrangler whoami`. (It's an identifier, not a secret —
-  // keeping it out just makes this a cleaner template to fork.)
+  // Account handling:
+  //   - base config (`npm run deploy`): no account_id — forks deploy to THEIR
+  //     account via `wrangler login` (or CLOUDFLARE_ACCOUNT_ID in CI).
+  //   - env.production (`npm run deploy:prod`): pins the maintainer's account_id
+  //     so it "just works" even with multiple accounts on one login. account_id
+  //     is an identifier, not a secret; forks don't use this env, so it's harmless.
+  // Find an account id with `wrangler whoami` or the dashboard.
   //
-  // Forking? Change "name", and set your own domain under env.production.routes
-  // (or just use `npm run deploy` and ignore the production env entirely).
+  // Forking? Change "name", and set your own account_id + domain under env.production.
   "name": "mdread",
   "compatibility_date": "2025-01-01",
   // instant-access *.workers.dev URL (works while a custom-domain cert provisions)
@@ -27,6 +28,7 @@
     // so `assets` is repeated here. Deploy with `wrangler deploy --env production`.
     "production": {
       "name": "mdread",
+      "account_id": "bc1a1c44574db2c6033e81bbc745abd0",
       "assets": {
         "directory": "./dist",
         "not_found_handling": "single-page-application"
