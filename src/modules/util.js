@@ -1,4 +1,5 @@
-/* Small pure helpers shared across modules. No DOM, no state. */
+/* Small helpers shared across modules. Mostly pure (no DOM, no state); the one
+   exception is copyText, which touches the clipboard / a throwaway DOM node. */
 
 import { MD_RE } from "./dom.js";
 
@@ -49,3 +50,36 @@ export function readJSON(k) {
     return {};
   }
 }
+
+// Copy text to the clipboard. The async Clipboard API only exists in a secure
+// context (HTTPS, localhost/loopback) — on a plain-HTTP origin like a self-hosted
+// LAN IP, navigator.clipboard is undefined. So feature-detect, then fall back to
+// a temporary <textarea> + execCommand("copy"), which works over plain HTTP too.
+// Resolves true on success, false otherwise.
+export async function copyText(text) {
+  if (navigator.clipboard && window.isSecureContext) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      /* fall through to the legacy path */
+    }
+  }
+  try {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.setAttribute("readonly", "");
+    ta.style.position = "fixed";
+    ta.style.top = "-9999px";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand("copy");
+    ta.remove();
+    return ok;
+  } catch {
+    return false;
+  }
+}
+
+

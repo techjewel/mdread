@@ -9,7 +9,7 @@ import DOMPurify from "dompurify";
 import hljs from "highlight.js/lib/common";
 
 import { $$, reading, tocList } from "./dom.js";
-import { slug } from "./util.js";
+import { slug, copyText } from "./util.js";
 
 marked.setOptions({ gfm: true, breaks: false });
 
@@ -88,36 +88,6 @@ function addCopyButton(block) {
     }, 1500);
   });
   pre.appendChild(btn);
-}
-
-// Copy text to the clipboard. The async Clipboard API only exists in a secure
-// context (HTTPS, localhost/loopback) — on a plain-HTTP origin like a self-hosted
-// LAN IP, navigator.clipboard is undefined. So feature-detect, then fall back to
-// a temporary <textarea> + execCommand("copy"), which works over plain HTTP too.
-async function copyText(text) {
-  if (navigator.clipboard && window.isSecureContext) {
-    try {
-      await navigator.clipboard.writeText(text);
-      return true;
-    } catch {
-      /* fall through to the legacy path */
-    }
-  }
-  try {
-    const ta = document.createElement("textarea");
-    ta.value = text;
-    ta.setAttribute("readonly", "");
-    ta.style.position = "fixed";
-    ta.style.top = "-9999px";
-    ta.style.opacity = "0";
-    document.body.appendChild(ta);
-    ta.select();
-    const ok = document.execCommand("copy");
-    ta.remove();
-    return ok;
-  } catch {
-    return false;
-  }
 }
 
 function buildToc(items) {
