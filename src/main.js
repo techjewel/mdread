@@ -22,6 +22,7 @@ import { renderRecents, getRecents } from "./modules/recents.js";
 import { wireScroll } from "./modules/scroll.js";
 import { wireEditor } from "./modules/editor.js";
 import { onKey } from "./modules/keyboard.js";
+import { wireLaunch } from "./modules/launch.js";
 
 function wire() {
   // sources
@@ -151,6 +152,10 @@ async function init() {
   setSidebar(innerWidth > 820); // start collapsed on phones
   app.dataset.mode = "read";
   wire();
+
+  // OS file-handler: if the app was launched to open a file, consume it now
+  // (before the recent-folder restore, so an explicitly opened file wins).
+  wireLaunch();
 
   if (!supportsFSA) {
     hint(
