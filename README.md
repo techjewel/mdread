@@ -30,8 +30,9 @@ one command.
   at all: the whole encrypted document rides inside the URL.
 - 🗄️ **Vault** — keep encrypted copies of documents in the cloud and open them from any
   device. Each document is sealed in your browser with a key derived from your **master
-  password**, so the server stores bytes it cannot read. The vault lives at the bottom of
-  the sidebar; press **+** to add whatever you're reading.
+  password**, so the server stores bytes it cannot read. **Add to vault** sits in the
+  toolbar beside the document; the sidebar previews your most recent, and **Show all**
+  opens the full, searchable vault.
 - 🔑 **Optional sign-in** for the vault, and to keep your share links when you clear your
   browser. Sign-in is a magic link — no password to manage — while the master password is
   the encryption key and never reaches the server. mdread stores `SHA-256(your email)` and

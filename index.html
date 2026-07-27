@@ -84,9 +84,7 @@
             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" aria-hidden="true"><rect x="4" y="10.5" width="16" height="9.5" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" stroke="currentColor" stroke-width="1.5"/></svg>
             <span class="vaultbox__title">Vault</span>
             <span class="vaultbox__count" id="vaultBoxCount"></span>
-            <button class="vaultbox__add" id="vaultAddBtn" aria-label="Save this document to your vault" title="Save this document to your vault">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
-            </button>
+            <button class="vaultbox__all" id="vaultShowAll">Show all</button>
           </div>
 
           <button class="vaultbox__cta" data-vs="out" id="vaultBoxSignIn">
@@ -96,9 +94,10 @@
             Unlock to see your documents
           </button>
           <p class="vaultbox__empty" data-vs="empty">
-            Nothing here yet. Open a document and press <strong>+</strong> to keep an encrypted copy.
+            Nothing here yet. Open a document and press <strong>Add to vault</strong> to keep an encrypted copy.
           </p>
           <div class="vaultbox__list" data-vs="on" id="vaultList"></div>
+          <button class="vaultbox__more" data-vs="on" id="vaultMore" hidden></button>
         </section>
 
         <div class="recents" id="recentsWrap" hidden>
@@ -165,6 +164,11 @@
           </button>
           <button class="icon-btn" id="downloadBtn" title="Download .md" aria-label="Download">
             <svg viewBox="0 0 24 24" width="18" height="18"><path d="M12 4v10m0 0 4-4m-4 4-4-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 19h14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          </button>
+          <button class="vault-add" id="vaultAddBtn" title="Save this document to your vault">
+            <svg class="vault-add__plus" viewBox="0 0 24 24" width="15" height="15" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+            <svg class="vault-add__tick" viewBox="0 0 24 24" width="15" height="15" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span id="vaultAddLabel">Add to vault</span>
           </button>
           <button class="icon-btn" id="shareBtn" title="Share — end-to-end encrypted (⇧⌘S)" aria-label="Share">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none"><path d="M10.6 13.4a3.6 3.6 0 0 0 5.1 0l2.7-2.7a3.6 3.6 0 0 0-5.1-5.1l-1.2 1.2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M13.4 10.6a3.6 3.6 0 0 0-5.1 0l-2.7 2.7a3.6 3.6 0 0 0 5.1 5.1l1.2-1.2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
@@ -378,6 +382,30 @@
       <span id="shareSyncText">These links live in this browser only</span>
       <span class="share__sync-act" id="shareSyncAct">Set up sync</span>
     </button>
+  </dialog>
+
+  <!-- the whole vault, roomy. Opened from "Show all". -->
+  <dialog class="dlg dlg--wide" id="vaultDlg" aria-labelledby="vaultDlgTitle">
+    <button class="dlg__x" id="vaultDlgClose" aria-label="Close">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+    </button>
+
+    <h2 class="dlg__title" id="vaultDlgTitle">Your vault</h2>
+    <p class="dlg__lede">
+      Encrypted with your master password before upload. <strong>mdread can't read any of it.</strong>
+      Open one from any device you've signed in on.
+    </p>
+
+    <div class="vgrid__bar">
+      <div class="vgrid__search">
+        <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><circle cx="11" cy="11" r="6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="m16 16 4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        <input id="vaultSearch" type="search" placeholder="Search your vault…" autocomplete="off" spellcheck="false" />
+      </div>
+      <span class="vgrid__stat" id="vaultDlgStat"></span>
+    </div>
+
+    <div class="vgrid" id="vaultGrid"></div>
+    <p class="vgrid__none" id="vaultNone" hidden>Nothing matches that.</p>
   </dialog>
 
   <!-- account dialog. data-vault (out|sent|setup|locked|on) picks the pane. -->

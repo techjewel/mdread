@@ -21,7 +21,9 @@ deliberately *blind* in two places, and both are load-bearing:
   nothing to reset, and adding one would mean holding the key.
 
 Reading and editing local files still never touch the network — the vault is opt-in per
-document, via the **+** in the sidebar vault panel.
+document, via **Add to vault** in the topbar. That button lives with the document it acts
+on, not in the sidebar; the sidebar panel previews the five most recent and hands off to
+`#vaultDlg` (the full, searchable vault) via "Show all".
 
 **Vault storage is split deliberately.** The *index* (`vault:<acct>`) holds share links
 plus a document listing (id, name, path, size, updatedAt). Each document *body* is its

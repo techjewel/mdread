@@ -42,3 +42,9 @@
   .src-btn { padding: .5rem; }
   .seg button { font-size: .66rem; padding: .3rem .45rem; }
 }
+
+/* The vault button keeps its icon but drops the label when the topbar tightens. */
+@media (max-width: 900px) {
+  .vault-add span { display: none; }
+  .vault-add { padding: .3rem .45rem; }
+}

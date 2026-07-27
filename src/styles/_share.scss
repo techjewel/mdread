@@ -140,14 +140,37 @@
   flex: 1;
   font-size: .66rem; letter-spacing: .02em; color: var(--ink-faint);
 }
-.vaultbox__add {
-  flex: none; display: grid; place-items: center;
-  width: 1.4rem; height: 1.4rem; border-radius: 6px;
-  color: var(--ink-soft); transition: .14s var(--ease);
+.vaultbox__all {
+  flex: none; padding: .1rem .3rem; border-radius: 5px;
+  font-family: var(--ui); font-size: .64rem; letter-spacing: .04em;
+  text-transform: uppercase; color: var(--accent);
+  transition: .14s var(--ease);
 }
-.vaultbox__add:hover { background: var(--paper-2); color: var(--accent); }
-.vaultbox__add.is-saved { color: var(--accent); }
-.vaultbox__add:disabled { opacity: .4; pointer-events: none; }
+.vaultbox__all:hover { background: var(--paper-2); }
+.vaultbox__more {
+  width: 100%; text-align: left; margin-top: .15rem;
+  padding: .35rem .5rem; border-radius: 8px;
+  font-family: var(--ui); font-size: .68rem; color: var(--accent);
+  transition: .14s var(--ease);
+}
+.vaultbox__more:hover { background: var(--paper-2); }
+
+/* ---------- "Add to vault", in the topbar with the document it acts on ---------- */
+.vault-add {
+  display: inline-flex; align-items: center; gap: .3rem;
+  padding: .3rem .6rem; border-radius: 8px;
+  border: 1px solid var(--line-2); background: var(--paper);
+  font-family: var(--ui); font-size: .72rem; color: var(--ink-soft);
+  white-space: nowrap; transition: .16s var(--ease);
+}
+.vault-add:hover { border-color: var(--accent); color: var(--accent); }
+.vault-add:disabled { opacity: .5; pointer-events: none; }
+.vault-add__tick { display: none; }
+.vault-add.is-saved {
+  border-color: var(--accent-soft); background: var(--paper-2); color: var(--accent);
+}
+.vault-add.is-saved .vault-add__plus { display: none; }
+.vault-add.is-saved .vault-add__tick { display: block; }
 
 /* only the child matching data-state is shown */
 .vaultbox > [data-vs] { display: none; }
@@ -201,6 +224,69 @@ html[data-theme="night"] .vrow.is-current .vrow__meta { color: #1a1610; }
 .vrow:hover .vrow__del { opacity: 1; }
 .vrow__del:hover { color: var(--accent); background: var(--paper); }
 .vrow.is-current .vrow__del { color: var(--paper); opacity: .75; }
+
+/* ---------- the full vault, in a roomy dialog ---------- */
+.dlg--wide { width: min(46rem, calc(100vw - 2rem)); }
+
+.vgrid__bar {
+  display: flex; align-items: center; gap: .7rem;
+  margin: 1.1rem 0 .8rem;
+}
+.vgrid__search {
+  flex: 1; display: flex; align-items: center; gap: .45rem;
+  padding: .45rem .65rem; border-radius: 9px;
+  border: 1px solid var(--line-2); background: var(--paper);
+  color: var(--ink-faint);
+}
+.vgrid__search:focus-within { border-color: var(--accent); }
+.vgrid__search input {
+  flex: 1; min-width: 0; border: 0; background: none; outline: none;
+  font-family: var(--sans); font-size: .82rem; color: var(--ink);
+}
+.vgrid__stat {
+  flex: none; font-family: var(--ui); font-size: .68rem; color: var(--ink-faint);
+}
+
+.vgrid {
+  display: flex; flex-direction: column; gap: .3rem;
+  max-height: min(26rem, 55vh); overflow-y: auto;
+  margin: 0 -.35rem; padding: 0 .35rem;
+}
+.vgrid__none {
+  font-family: var(--sans); font-size: .82rem; color: var(--ink-faint);
+  text-align: center; padding: 2rem 0; margin: 0;
+}
+
+.vcard {
+  display: flex; align-items: center; gap: .6rem;
+  padding: .1rem; border-radius: 10px;
+  border: 1px solid var(--line); background: var(--paper);
+  transition: .14s var(--ease);
+}
+.vcard:hover { border-color: var(--accent-soft); background: var(--paper-2); }
+.vcard.is-current { border-color: var(--accent); }
+.vcard__open {
+  flex: 1; min-width: 0; text-align: left;
+  display: flex; flex-direction: column; gap: 2px;
+  padding: .55rem .65rem;
+}
+.vcard__name {
+  font-family: var(--sans); font-size: .9rem; color: var(--ink);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.vcard__meta {
+  font-family: var(--ui); font-size: .67rem; color: var(--ink-faint);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.vcard__del {
+  flex: none; margin-right: .5rem; padding: .3rem .6rem;
+  border-radius: 7px; border: 1px solid transparent;
+  font-family: var(--ui); font-size: .68rem; color: var(--ink-faint);
+  opacity: 0; transition: .14s var(--ease);
+}
+.vcard:hover .vcard__del { opacity: 1; }
+.vcard__del:hover { color: var(--accent); border-color: var(--accent-soft); }
+.vcard__del:disabled { opacity: .4; pointer-events: none; }
 
 /* ---------- sidebar account entry ----------
    Persistent, so sync is discoverable without opening a document first.

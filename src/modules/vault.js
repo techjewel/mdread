@@ -353,6 +353,63 @@ export function renderVault() {
 
 /* ---------------- the sidebar vault ---------------- */
 
+const SIDEBAR_MAX = 5; // the sidebar previews; "Show all" opens the real thing
+
+async function confirmRemove(d, btn) {
+  btn.disabled = true;
+  try {
+    await removeVaultDoc(d.id);
+    toast("Removed from vault");
+  } catch {
+    toast("Could not remove that");
+    btn.disabled = false;
+  }
+  renderVaultBox();
+  if (el("vaultDlg").open) renderVaultGrid();
+}
+
+const XMARK = `<svg viewBox="0 0 24 24" width="13" height="13" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>`;
+
+// One row shape, two homes: the sidebar preview and the full grid.
+function docRow(d, { wide }) {
+  const row = document.createElement("div");
+  row.className = wide ? "vcard" : "vrow";
+  row.classList.toggle("is-current", state.current?.vaultId === d.id);
+
+  const open = document.createElement("button");
+  open.className = wide ? "vcard__open" : "vrow__open";
+  open.title = d.path;
+
+  const nm = document.createElement("span");
+  nm.className = wide ? "vcard__name" : "vrow__name";
+  nm.textContent = d.name.replace(MD_RE, "");
+
+  const meta = document.createElement("span");
+  meta.className = wide ? "vcard__meta" : "vrow__meta";
+  meta.textContent = wide
+    ? `${d.path} · ${fmtSize(d.size)} · saved ${fmtWhen(d.updatedAt)}`
+    : `${fmtSize(d.size)} · ${fmtWhen(d.updatedAt)}`;
+
+  open.append(nm, meta);
+  open.addEventListener("click", async () => {
+    await openFromVault(d);
+    if (wide) el("vaultDlg").close();
+  });
+
+  const del = document.createElement("button");
+  del.className = wide ? "vcard__del" : "vrow__del";
+  del.setAttribute("aria-label", `Remove ${d.name} from your vault`);
+  del.title = "Remove from vault";
+  del.innerHTML = wide ? "Remove" : XMARK;
+  del.addEventListener("click", (e) => {
+    e.stopPropagation();
+    confirmRemove(d, del);
+  });
+
+  row.append(open, del);
+  return row;
+}
+
 export function renderVaultBox() {
   const box = el("vaultBox");
   if (!box) return;
@@ -362,61 +419,57 @@ export function renderVaultBox() {
   box.dataset.state = mode;
 
   el("vaultBoxCount").textContent = mode === "on" ? String(docs.length) : "";
+  el("vaultShowAll").hidden = mode !== "on";
 
-  // Adding needs both an open document and an unlocked vault.
+  /* The add button lives in the topbar, with the document it acts on, rather
+     than tucked into the sidebar. It states which of the two things it will do. */
   const add = el("vaultAddBtn");
   const canAdd = vaultState.unlocked && !!state.current && !state.shared;
   add.hidden = !canAdd;
   if (canAdd) {
     const already = docForPath(state.current.path);
     add.classList.toggle("is-saved", !!already);
+    el("vaultAddLabel").textContent = already ? "In vault" : "Add to vault";
     add.title = already ? "Update the copy in your vault" : "Save this document to your vault";
   }
 
   const list = el("vaultList");
+  list.innerHTML = "";
+  const more = el("vaultMore");
   if (mode !== "on") {
-    list.innerHTML = "";
+    more.hidden = true;
     return;
   }
 
-  list.innerHTML = "";
-  for (const d of docs) {
-    const row = document.createElement("div");
-    row.className = "vrow";
-    row.classList.toggle("is-current", state.current?.vaultId === d.id);
+  for (const d of docs.slice(0, SIDEBAR_MAX)) list.append(docRow(d, { wide: false }));
+  more.hidden = docs.length <= SIDEBAR_MAX;
+  if (!more.hidden) more.textContent = `Show all ${docs.length}`;
+}
 
-    const open = document.createElement("button");
-    open.className = "vrow__open";
-    open.title = d.path;
-    const nm = document.createElement("span");
-    nm.className = "vrow__name";
-    nm.textContent = d.name.replace(MD_RE, "");
-    const meta = document.createElement("span");
-    meta.className = "vrow__meta";
-    meta.textContent = `${fmtSize(d.size)} · ${fmtWhen(d.updatedAt)}`;
-    open.append(nm, meta);
-    open.addEventListener("click", () => openFromVault(d));
+/* ---------------- the full vault ---------------- */
 
-    const del = document.createElement("button");
-    del.className = "vrow__del";
-    del.setAttribute("aria-label", `Remove ${d.name} from your vault`);
-    del.title = "Remove from vault";
-    del.innerHTML = `<svg viewBox="0 0 24 24" width="13" height="13" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>`;
-    del.addEventListener("click", async (e) => {
-      e.stopPropagation();
-      del.disabled = true;
-      try {
-        await removeVaultDoc(d.id);
-        toast("Removed from vault");
-      } catch {
-        toast("Could not remove that");
-      }
-      renderVaultBox();
-    });
+export function renderVaultGrid() {
+  const grid = el("vaultGrid");
+  if (!grid) return;
 
-    row.append(open, del);
-    list.append(row);
-  }
+  const q = el("vaultSearch").value.trim().toLowerCase();
+  const all = readDocs();
+  const docs = q ? all.filter((d) => `${d.name} ${d.path}`.toLowerCase().includes(q)) : all;
+
+  el("vaultDlgStat").textContent = q
+    ? `${docs.length} of ${all.length}`
+    : `${all.length} document${all.length === 1 ? "" : "s"}`;
+
+  grid.innerHTML = "";
+  for (const d of docs) grid.append(docRow(d, { wide: true }));
+  el("vaultNone").hidden = docs.length > 0 || !all.length;
+}
+
+function openVaultDialog() {
+  el("vaultSearch").value = "";
+  renderVaultGrid();
+  const d = el("vaultDlg");
+  if (!d.open) d.showModal();
 }
 
 const fmtSize = (n) => (n < 1024 ? `${n} B` : n < 1024 * 1024 ? `${Math.round(n / 1024)} KB` : `${(n / 1048576).toFixed(1)} MB`);
@@ -474,6 +527,7 @@ async function addCurrentToVault() {
   } finally {
     btn.disabled = false;
     renderVaultBox();
+    if (el("vaultDlg").open) renderVaultGrid();
   }
 }
 
@@ -546,6 +600,12 @@ export function wireVault() {
   el("vaultAddBtn").addEventListener("click", addCurrentToVault);
   el("vaultBoxSignIn").addEventListener("click", openAccount);
   el("vaultBoxUnlock").addEventListener("click", openAccount);
+
+  el("vaultShowAll").addEventListener("click", openVaultDialog);
+  el("vaultMore").addEventListener("click", openVaultDialog);
+  el("vaultDlgClose").addEventListener("click", () => el("vaultDlg").close());
+  el("vaultDlg").addEventListener("click", (e) => e.target === el("vaultDlg") && el("vaultDlg").close());
+  el("vaultSearch").addEventListener("input", debounce(renderVaultGrid, 120));
   el("shareSyncLine").addEventListener("click", () => {
     el("shareDlg").close();
     openAccount();
