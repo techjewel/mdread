@@ -15,13 +15,19 @@ deliberately *blind* in two places, and both are load-bearing:
 - **Shares** — the browser seals a bundle with AES-GCM and the key travels in the URL
   fragment, which is never transmitted. Do not "improve" this by moving encryption
   server-side or by putting the key in a query string or path segment.
-- **Vault** (the synced list of links you've created) — encrypted with a key stretched
-  from the user's master password via PBKDF2, client-side. The server stores
-  `SHA-256(email)` and a blob. Do not add a password-reset flow: there is nothing to
-  reset, and adding one would mean holding the key.
+- **Vault** (synced share links *and* documents the user explicitly saved) — encrypted
+  with a key stretched from the user's master password via PBKDF2, client-side. The
+  server stores `SHA-256(email)` and blobs. Do not add a password-reset flow: there is
+  nothing to reset, and adding one would mean holding the key.
 
-Reading and editing still never touch the network. Accounts are optional and narrow —
-they restore *share links*, not documents.
+Reading and editing local files still never touch the network — the vault is opt-in per
+document, via the **+** in the sidebar vault panel.
+
+**Vault storage is split deliberately.** The *index* (`vault:<acct>`) holds share links
+plus a document listing (id, name, path, size, updatedAt). Each document *body* is its
+own key (`vaultdoc:<acct>:<id>`), so saving one document doesn't rewrite the whole blob
+and the index stays cheap to fetch on unlock. Bodies are never cached in plaintext
+locally — only the index is, so the sidebar can render before anything is decrypted.
 
 > Naming: the product/UI is "mdread" (and `wrangler.jsonc`/`package.json` `name`), but the
 > directory, code comments, IndexedDB database, and `localStorage` keys all use **`markread`**.
@@ -62,7 +68,8 @@ All behaviour lives in `src/modules/*.js` — plain ES modules, one concern each
 - `editor.js` / `save.js` — editing + saving · `view.js` / `scroll.js` / `ui.js` — modes, prefs, progress, toasts
 - `crypto.js` — AES-GCM, gzip, and PBKDF2 primitives, pure bytes-in/bytes-out
 - `share.js` — bundle format, the share dialog, and `bootShare()` (the shared-link viewer)
-- `vault.js` — sign-in, master-password unlock, and share-list sync (`data-vault` panes)
+- `vault.js` — sign-in, master-password unlock, share-list sync, and vault documents
+  (`data-vault` panes in the account dialog, `data-state` on the sidebar vault panel)
 - `recents.js`, `sample.js`, `keyboard.js`
 
 The modules form import **cycles** (e.g. `tree` ↔ `document`, `files` ↔ `recents`). This is
@@ -98,9 +105,14 @@ highlight code → rewrite external links to `target="_blank"`.
 `lastDoc`. `localStorage` holds `markread:prefs`, `markread:pos` (per-path scroll ratio),
 `markread:shares` (links you've created, *including their keys*, so they can be re-copied and
 revoked), `markread:shares:removed` (revocation tombstones, so a sync can't resurrect a deleted
-share), and `markread:vault:email` (to prefill the unlock form). None of this leaves the device
-except as ciphertext in the vault. **The derived vault key is never persisted** — it lives in a
-module-level variable in `vault.js`, so closing the tab re-locks.
+share), `markread:vault:email` (to prefill the unlock form), and `markread:vault:docs` +
+`markread:vault:docs:removed` (the document *index* only — never document bodies). None of this
+leaves the device except as ciphertext in the vault. **The derived vault key is never
+persisted** — it lives in a module-level variable in `vault.js`, so closing the tab re-locks.
+
+⚠️ `openSample()` in `sample.js` sets `state.current` directly instead of going through
+`openDoc()`, so anything that must react to "the current document changed" needs calling from
+both. `renderVaultBox()` is wired into `openDoc`, `newDoc`, and `openSample` for this reason.
 
 ### Styles (SCSS)
 

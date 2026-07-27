@@ -14,13 +14,40 @@
 
    The blob itself is sealed with the same AES-GCM format as a share bundle. */
 
-import { deriveVaultKey, seal, open as unseal } from "./crypto.js";
+import { deriveVaultKey, seal, open as unseal, toB64url } from "./crypto.js";
 import { readShares, writeShares, readTombstones, writeTombstones } from "./share.js";
-import { debounce } from "./util.js";
-import { $ } from "./dom.js";
+import { debounce, readJSON } from "./util.js";
+import { $, app, editor, MD_RE } from "./dom.js";
 import { toast } from "./ui.js";
+import { state } from "./state.js";
+import { renderTree } from "./tree.js";
+import { openDoc } from "./document.js";
 
-const VAULT_V = 1;
+/* v1 held only share links. v2 adds a document index; v1 blobs are migrated on
+   read rather than rejected, so an existing vault keeps working. */
+const VAULT_V = 2;
+
+const DOCS_KEY = "markread:vault:docs";
+const DOCS_TOMB_KEY = "markread:vault:docs:removed";
+const MAX_DOC_BYTES = 1024 * 1024; // matches the Worker's per-document cap
+const MAX_DOCS = 200;
+
+/* The index (names, sizes) is kept locally so the sidebar can render without a
+   round-trip. Document *bodies* are never cached in plaintext — they're fetched
+   and decrypted on open, so nothing readable is left sitting on the device. */
+export const readDocs = () => {
+  const v = readJSON(DOCS_KEY);
+  return Array.isArray(v) ? v : [];
+};
+export const writeDocs = (list) => localStorage.setItem(DOCS_KEY, JSON.stringify(list));
+
+const readDocTombs = () => {
+  const v = readJSON(DOCS_TOMB_KEY);
+  return Array.isArray(v) ? v : [];
+};
+const writeDocTombs = (list) => localStorage.setItem(DOCS_TOMB_KEY, JSON.stringify(list));
+
+const newDocId = () => toB64url(crypto.getRandomValues(new Uint8Array(9)));
 
 /* Session-scoped, deliberately not persisted: the derived key lives in memory
    only, so closing the tab re-locks the vault. */
@@ -83,27 +110,41 @@ export function lockVault() {
    Union by id, minus anything tombstoned on either side. Last writer wins per
    record, which is fine because share records are immutable once created. */
 
-function merge(local, remote) {
+function mergeList(localList, remoteList, localTombs, remoteTombs, sortBy) {
   const tombs = new Map();
-  for (const t of [...(local.removed || []), ...(remote.removed || [])]) {
+  for (const t of [...(localTombs || []), ...(remoteTombs || [])]) {
     if (!tombs.has(t.id) || t.at > tombs.get(t.id).at) tombs.set(t.id, t);
   }
 
-  const shares = new Map();
-  for (const s of [...(remote.shares || []), ...(local.shares || [])]) shares.set(s.id, s);
-  for (const id of tombs.keys()) shares.delete(id);
+  const items = new Map();
+  for (const s of [...(remoteList || []), ...(localList || [])]) {
+    // Documents can genuinely change, so the newer edit wins rather than local.
+    const prev = items.get(s.id);
+    if (!prev || (s.updatedAt || 0) >= (prev.updatedAt || 0)) items.set(s.id, s);
+  }
+  for (const id of tombs.keys()) items.delete(id);
 
-  return {
-    shares: [...shares.values()].sort((a, b) => (b.expiresAt || 0) - (a.expiresAt || 0)),
-    removed: [...tombs.values()],
-  };
+  return { items: [...items.values()].sort(sortBy), tombs: [...tombs.values()] };
 }
 
-const localSnapshot = () => ({ shares: readShares(), removed: readTombstones() });
+function merge(local, remote) {
+  const shares = mergeList(local.shares, remote.shares, local.removed, remote.removed, (a, b) => (b.expiresAt || 0) - (a.expiresAt || 0));
+  const docs = mergeList(local.docs, remote.docs, local.docsRemoved, remote.docsRemoved, (a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+  return { shares: shares.items, removed: shares.tombs, docs: docs.items, docsRemoved: docs.tombs };
+}
 
-function applyLocally({ shares, removed }) {
+const localSnapshot = () => ({
+  shares: readShares(),
+  removed: readTombstones(),
+  docs: readDocs(),
+  docsRemoved: readDocTombs(),
+});
+
+function applyLocally({ shares, removed, docs, docsRemoved }) {
   writeShares(shares);
   writeTombstones(removed);
+  writeDocs(docs);
+  writeDocTombs(docsRemoved);
 }
 
 /* ---------------- unlock / sync ---------------- */
@@ -128,7 +169,7 @@ export async function unlockVault(email, passphrase) {
   vaultKey = await deriveVaultKey(email, passphrase);
 
   const remote = await pullVault();
-  const merged = merge(localSnapshot(), remote || { shares: [], removed: [] });
+  const merged = merge(localSnapshot(), remote || { shares: [], removed: [], docs: [], docsRemoved: [] });
   applyLocally(merged);
 
   vaultState.unlocked = true;
@@ -154,8 +195,9 @@ async function pullVault() {
     throw new Error("That master password doesn't match this vault");
   }
   const blob = JSON.parse(json);
-  if (blob.v !== VAULT_V) throw new Error("This vault was written by a newer version of mdread");
-  return blob;
+  if (blob.v > VAULT_V) throw new Error("This vault was written by a newer version of mdread");
+  // v1 predates document storage; the missing keys just default to empty.
+  return { docs: [], docsRemoved: [], ...blob };
 }
 
 export async function pushVault() {
@@ -163,8 +205,8 @@ export async function pushVault() {
   vaultState.syncing = true;
   renderVault();
   try {
-    const { shares, removed } = localSnapshot();
-    const payload = await seal(vaultKey, JSON.stringify({ v: VAULT_V, shares, removed, updatedAt: Date.now() }));
+    const snap = localSnapshot();
+    const payload = await seal(vaultKey, JSON.stringify({ v: VAULT_V, ...snap, updatedAt: Date.now() }));
     const res = await fetch("/api/vault", {
       method: "PUT",
       credentials: "same-origin",
@@ -180,6 +222,70 @@ export async function pushVault() {
     renderVault();
     onSync();
   }
+}
+
+/* ---------------- documents ----------------
+   Bodies are sealed with the same master-password key and stored one per
+   request, so saving one document doesn't rewrite the rest. The index entry
+   (name, size, timestamp) rides in the vault blob; the body never does. */
+
+export const isUnlocked = () => !!vaultKey;
+export const findDoc = (id) => readDocs().find((d) => d.id === id);
+
+// Matching an existing entry by path means re-saving updates in place rather
+// than piling up duplicates of the same file.
+export const docForPath = (path) => readDocs().find((d) => d.path === path);
+
+export async function saveDocToVault({ name, path, content }) {
+  if (!vaultKey) throw new Error("Unlock your vault first");
+
+  const bytes = new TextEncoder().encode(content || "").length;
+  if (bytes > MAX_DOC_BYTES) throw new Error("That document is too large for the vault (1 MB maximum)");
+
+  const existing = docForPath(path);
+  if (!existing && readDocs().length >= MAX_DOCS) throw new Error(`The vault holds up to ${MAX_DOCS} documents`);
+
+  const id = existing?.id || newDocId();
+  const payload = await seal(vaultKey, JSON.stringify({ v: 1, name, path, content }));
+
+  const res = await fetch(`/api/vault/doc/${id}`, {
+    method: "PUT",
+    credentials: "same-origin",
+    headers: { "content-type": "application/octet-stream" },
+    body: payload,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || `Could not save to the vault (${res.status})`);
+  }
+
+  const entry = { id, name, path, size: bytes, updatedAt: Date.now() };
+  writeDocs([entry, ...readDocs().filter((d) => d.id !== id)]);
+  await pushVault();
+  return entry;
+}
+
+export async function fetchVaultDoc(id) {
+  if (!vaultKey) throw new Error("Unlock your vault first");
+
+  const res = await fetch(`/api/vault/doc/${id}`, { credentials: "same-origin" });
+  if (res.status === 404) throw new Error("That document is no longer in your vault");
+  if (!res.ok) throw new Error(`Could not open that document (${res.status})`);
+
+  const payload = new Uint8Array(await res.arrayBuffer());
+  const body = JSON.parse(await unseal(vaultKey, payload));
+  return body;
+}
+
+export async function removeVaultDoc(id) {
+  try {
+    await fetch(`/api/vault/doc/${id}`, { method: "DELETE", credentials: "same-origin" });
+  } catch {
+    /* the index entry goes either way; a stray blob is unreadable regardless */
+  }
+  writeDocs(readDocs().filter((d) => d.id !== id));
+  writeDocTombs([{ id, at: Date.now() }, ...readDocTombs().filter((t) => t.id !== id)]);
+  await pushVault();
 }
 
 /* Share create/revoke call this; it coalesces bursts into one upload. */
@@ -242,6 +348,133 @@ export function renderVault() {
     el("vaultWho").textContent = vaultState.email;
   }
   if (vaultState.lastError) showError(vaultState.lastError);
+  renderVaultBox();
+}
+
+/* ---------------- the sidebar vault ---------------- */
+
+export function renderVaultBox() {
+  const box = el("vaultBox");
+  if (!box) return;
+
+  const docs = readDocs();
+  const mode = !vaultState.signedIn ? "out" : !vaultState.unlocked ? "locked" : docs.length ? "on" : "empty";
+  box.dataset.state = mode;
+
+  el("vaultBoxCount").textContent = mode === "on" ? String(docs.length) : "";
+
+  // Adding needs both an open document and an unlocked vault.
+  const add = el("vaultAddBtn");
+  const canAdd = vaultState.unlocked && !!state.current && !state.shared;
+  add.hidden = !canAdd;
+  if (canAdd) {
+    const already = docForPath(state.current.path);
+    add.classList.toggle("is-saved", !!already);
+    add.title = already ? "Update the copy in your vault" : "Save this document to your vault";
+  }
+
+  const list = el("vaultList");
+  if (mode !== "on") {
+    list.innerHTML = "";
+    return;
+  }
+
+  list.innerHTML = "";
+  for (const d of docs) {
+    const row = document.createElement("div");
+    row.className = "vrow";
+    row.classList.toggle("is-current", state.current?.vaultId === d.id);
+
+    const open = document.createElement("button");
+    open.className = "vrow__open";
+    open.title = d.path;
+    const nm = document.createElement("span");
+    nm.className = "vrow__name";
+    nm.textContent = d.name.replace(MD_RE, "");
+    const meta = document.createElement("span");
+    meta.className = "vrow__meta";
+    meta.textContent = `${fmtSize(d.size)} · ${fmtWhen(d.updatedAt)}`;
+    open.append(nm, meta);
+    open.addEventListener("click", () => openFromVault(d));
+
+    const del = document.createElement("button");
+    del.className = "vrow__del";
+    del.setAttribute("aria-label", `Remove ${d.name} from your vault`);
+    del.title = "Remove from vault";
+    del.innerHTML = `<svg viewBox="0 0 24 24" width="13" height="13" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>`;
+    del.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      del.disabled = true;
+      try {
+        await removeVaultDoc(d.id);
+        toast("Removed from vault");
+      } catch {
+        toast("Could not remove that");
+      }
+      renderVaultBox();
+    });
+
+    row.append(open, del);
+    list.append(row);
+  }
+}
+
+const fmtSize = (n) => (n < 1024 ? `${n} B` : n < 1024 * 1024 ? `${Math.round(n / 1024)} KB` : `${(n / 1048576).toFixed(1)} MB`);
+
+function fmtWhen(ts) {
+  const mins = Math.round((Date.now() - ts) / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.round(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.round(hrs / 24);
+  return days < 30 ? `${days}d ago` : new Date(ts).toLocaleDateString();
+}
+
+async function openFromVault(entry) {
+  try {
+    const body = await fetchVaultDoc(entry.id);
+    let f = state.files.find((x) => x.vaultId === entry.id);
+    if (f) {
+      f.content = body.content;
+    } else {
+      f = {
+        name: body.name,
+        path: body.path,
+        content: body.content,
+        handle: null,
+        file: null,
+        dirty: false,
+        draft: false,
+        vaultId: entry.id,
+      };
+      state.files.push(f);
+      renderTree();
+    }
+    await openDoc(f);
+    renderVaultBox();
+  } catch (e) {
+    toast(e.message || "Could not open that document");
+  }
+}
+
+async function addCurrentToVault() {
+  const f = state.current;
+  if (!f) return;
+  const btn = el("vaultAddBtn");
+  btn.disabled = true;
+  try {
+    // Commit anything sitting in the editor before snapshotting.
+    if (app.dataset.mode !== "read") f.content = editor.value;
+    const entry = await saveDocToVault({ name: f.name, path: f.path, content: f.content ?? "" });
+    f.vaultId = entry.id;
+    toast("Saved to vault ✓");
+  } catch (e) {
+    toast(e.message || "Could not save to the vault");
+  } finally {
+    btn.disabled = false;
+    renderVaultBox();
+  }
 }
 
 async function doSend() {
@@ -310,6 +543,9 @@ export function wireVault() {
   const dlg = el("accountDlg");
 
   el("accountBtn").addEventListener("click", openAccount);
+  el("vaultAddBtn").addEventListener("click", addCurrentToVault);
+  el("vaultBoxSignIn").addEventListener("click", openAccount);
+  el("vaultBoxUnlock").addEventListener("click", openAccount);
   el("shareSyncLine").addEventListener("click", () => {
     el("shareDlg").close();
     openAccount();

@@ -122,6 +122,86 @@
 }
 .share__row-meta { font-family: var(--ui); font-size: .67rem; color: var(--ink-faint); }
 
+/* ---------- sidebar vault ----------
+   data-state is out | locked | empty | on; only the matching child shows. */
+.vaultbox {
+  border-top: 1px solid var(--line);
+  padding: .6rem 0 .5rem;
+  margin-bottom: .2rem;
+}
+.vaultbox__head {
+  display: flex; align-items: center; gap: .4rem;
+  padding: 0 .5rem .4rem;
+  font-family: var(--ui); font-size: .68rem; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--ink-faint);
+}
+.vaultbox__title { flex: none; }
+.vaultbox__count {
+  flex: 1;
+  font-size: .66rem; letter-spacing: .02em; color: var(--ink-faint);
+}
+.vaultbox__add {
+  flex: none; display: grid; place-items: center;
+  width: 1.4rem; height: 1.4rem; border-radius: 6px;
+  color: var(--ink-soft); transition: .14s var(--ease);
+}
+.vaultbox__add:hover { background: var(--paper-2); color: var(--accent); }
+.vaultbox__add.is-saved { color: var(--accent); }
+.vaultbox__add:disabled { opacity: .4; pointer-events: none; }
+
+/* only the child matching data-state is shown */
+.vaultbox > [data-vs] { display: none; }
+.vaultbox[data-state="out"]    > [data-vs="out"],
+.vaultbox[data-state="locked"] > [data-vs="locked"],
+.vaultbox[data-state="empty"]  > [data-vs="empty"],
+.vaultbox[data-state="on"]     > [data-vs="on"] { display: block; }
+
+.vaultbox__cta {
+  width: 100%; text-align: left;
+  padding: .45rem .5rem; border-radius: 8px;
+  font-family: var(--sans); font-size: .73rem; line-height: 1.4;
+  color: var(--ink-soft); transition: .14s var(--ease);
+}
+.vaultbox__cta:hover { background: var(--paper-2); color: var(--accent); }
+.vaultbox__empty {
+  margin: 0; padding: .3rem .5rem .1rem;
+  font-family: var(--sans); font-size: .72rem; line-height: 1.45; color: var(--ink-faint);
+}
+.vaultbox__empty strong { color: var(--ink-soft); }
+
+.vaultbox__list { max-height: 12rem; overflow-y: auto; }
+
+.vrow {
+  display: flex; align-items: center; gap: .2rem;
+  border-radius: 8px; transition: .14s var(--ease);
+}
+.vrow:hover { background: var(--paper-2); }
+.vrow.is-current { background: var(--accent); }
+.vrow.is-current .vrow__name,
+.vrow.is-current .vrow__meta { color: var(--paper); }
+html[data-theme="night"] .vrow.is-current .vrow__name,
+html[data-theme="night"] .vrow.is-current .vrow__meta { color: #1a1610; }
+
+.vrow__open {
+  flex: 1; min-width: 0; text-align: left;
+  display: flex; flex-direction: column; gap: 1px;
+  padding: .35rem .5rem;
+}
+.vrow__name {
+  font-family: var(--sans); font-size: .78rem; color: var(--ink);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.vrow__meta { font-family: var(--ui); font-size: .63rem; color: var(--ink-faint); }
+.vrow__del {
+  flex: none; display: grid; place-items: center;
+  width: 1.3rem; height: 1.3rem; margin-right: .25rem;
+  border-radius: 5px; color: var(--ink-faint); opacity: 0;
+  transition: .14s var(--ease);
+}
+.vrow:hover .vrow__del { opacity: 1; }
+.vrow__del:hover { color: var(--accent); background: var(--paper); }
+.vrow.is-current .vrow__del { color: var(--paper); opacity: .75; }
+
 /* ---------- sidebar account entry ----------
    Persistent, so sync is discoverable without opening a document first.
    data-acct is out | locked | on. */

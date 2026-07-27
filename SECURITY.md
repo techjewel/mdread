@@ -17,8 +17,9 @@ design, not a bug.
 
 ## How accounts are meant to work
 
-Signing in is optional and restores only your **list of share links**, never your
-documents. Two credentials with two separate jobs:
+Signing in is optional. It restores your **list of share links** and any documents
+you explicitly saved to the **vault**; nothing is uploaded unless you ask for it.
+Two credentials with two separate jobs:
 
 - **Email magic link** proves which account you are. The server stores
   `SHA-256(email)` and never persists the address itself.
@@ -61,9 +62,11 @@ within a few days and keep you posted on the fix.
   a predictable key or id, or ciphertext that can be read or forged without the key.
 - Reading or deleting someone else's share without its link or delete token.
 - **Any path by which a master password or derived vault key reaches the server.**
-- Reading or writing another account's vault, session fixation or forgery, a magic
-  link that can be replayed or guessed, or a magic link appearing in any HTTP
-  response body rather than only in email.
+- Reading or writing another account's vault **or vault documents**, session fixation
+  or forgery, a magic link that can be replayed or guessed, or a magic link appearing
+  in any HTTP response body rather than only in email.
+- Vault document bodies being readable without the master password, or a document body
+  being cached in plaintext on the device.
 - Account enumeration — `/api/auth/request` must answer identically whether or not
   an address has an account.
 

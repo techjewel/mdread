@@ -28,10 +28,14 @@ one command.
   send — so the server stores ciphertext it cannot read. Links expire, and you can
   revoke them. Small documents can use a **self-contained link** that uploads nothing
   at all: the whole encrypted document rides inside the URL.
-- 🔑 **Optional sign-in** to keep your share links when you clear your browser or move
-  to another device. Sign-in is a magic link — no password to manage — and the list
-  itself is encrypted with a **master password that never reaches the server**. mdread
-  stores `SHA-256(your email)` and a blob it can't read. Everything works signed out.
+- 🗄️ **Vault** — keep encrypted copies of documents in the cloud and open them from any
+  device. Each document is sealed in your browser with a key derived from your **master
+  password**, so the server stores bytes it cannot read. The vault lives at the bottom of
+  the sidebar; press **+** to add whatever you're reading.
+- 🔑 **Optional sign-in** for the vault, and to keep your share links when you clear your
+  browser. Sign-in is a magic link — no password to manage — while the master password is
+  the encryption key and never reaches the server. mdread stores `SHA-256(your email)` and
+  blobs it can't read. **Everything except the vault works signed out.**
 - 🎨 **Day / Sepia / Night** themes, adjustable text size, line width, typeface, and
   an optional drop cap.
 - 🔌 **Offline** — installable PWA; the app shell is cached, so it works with no network.
@@ -214,10 +218,11 @@ The trade-off worth knowing: **the link _is_ the password.** Anyone who has it c
 the document, so treat it accordingly — and because the key never leaves your side, a
 lost link cannot be recovered by us. Being unable to help is the point.
 
-### Accounts
+### Accounts and the vault
 
-Signing in is optional and only exists so your **share links** survive a cleared browser
-or a second device. It never uploads your documents.
+Signing in is optional. It exists so your **share links** and any documents you explicitly
+put in the **vault** survive a cleared browser or follow you to another device. Nothing is
+uploaded unless you press **+**; opening and editing local files never touches the network.
 
 Two credentials, two jobs, deliberately separated:
 
@@ -234,8 +239,10 @@ closing the tab re-locks the vault.
 no copy of it and no copy of the key. That's the direct consequence of the server being
 unable to read your vault, and mdread says so before you set one. Write it down.
 
-What an account gets you is deliberately narrow: sign-in restores the *list of links*.
-Your documents stay on your disk, where they've always been.
+Storage layout: the vault **index** (share links, plus document names and sizes) is one
+encrypted blob; each document **body** is its own encrypted blob, so saving one document
+doesn't rewrite the rest. Bodies are fetched and decrypted on open and are never cached
+in plaintext on the device. Limits are 1 MB per document and 200 documents.
 
 ## Contributing
 

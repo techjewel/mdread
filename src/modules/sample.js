@@ -5,6 +5,7 @@ import { app, docName, editor } from "./dom.js";
 import { renderMarkdown } from "./markdown.js";
 import { updateSub } from "./document.js";
 import { updateCurrentFolder } from "./tree.js";
+import { renderVaultBox } from "./vault.js";
 
 export function openSample() {
   const f = { name: "Welcome to mdread.md", path: "Welcome to mdread.md", content: SAMPLE, handle: null, file: null };
@@ -15,6 +16,7 @@ export function openSample() {
   renderMarkdown(SAMPLE);
   editor.value = SAMPLE;
   updateCurrentFolder();
+  renderVaultBox(); // this path doesn't go through openDoc()
 }
 
 const SAMPLE = `# A quiet reading room
