@@ -13,6 +13,17 @@ import { sessionAccount } from "./auth.js";
 const MAX_VAULT = 256 * 1024; // a share list, not a document store
 const vaultKey = (acct) => `vault:${acct}`;
 
+/* Lets the client ask "is this a first-time setup or a returning unlock?"
+   before prompting for a password, so the two can be worded differently. Only
+   ever reports on the caller's own account, so there is nothing to leak. */
+export async function vaultStatus(request, env) {
+  const acct = await sessionAccount(request, env);
+  if (!acct) return json({ error: "Not signed in" }, 401);
+  const existing = await env.VAULT.get(vaultKey(acct), { type: "stream" });
+  if (existing?.cancel) await existing.cancel(); // presence is all we needed
+  return json({ exists: !!existing });
+}
+
 export async function getVault(request, env) {
   const acct = await sessionAccount(request, env);
   if (!acct) return json({ error: "Not signed in" }, 401);

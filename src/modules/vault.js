@@ -25,7 +25,6 @@ const VAULT_V = 1;
 /* Session-scoped, deliberately not persisted: the derived key lives in memory
    only, so closing the tab re-locks the vault. */
 let vaultKey = null;
-let vaultEmail = "";
 
 export const vaultState = {
   signedIn: false, // a valid session cookie exists
@@ -69,9 +68,15 @@ export async function signOut() {
   } catch {
     /* the local session is dropped either way */
   }
+  lockVault();
+  vaultState.signedIn = false;
+}
+
+/* Drops the derived key but keeps the session — the shared-machine case, and
+   what closing the tab does implicitly. */
+export function lockVault() {
   vaultKey = null;
-  vaultEmail = "";
-  Object.assign(vaultState, { signedIn: false, unlocked: false, email: "", lastError: "" });
+  Object.assign(vaultState, { unlocked: false, email: "", lastError: "" });
 }
 
 /* ---------------- merge ----------------
@@ -103,12 +108,24 @@ function applyLocally({ shares, removed }) {
 
 /* ---------------- unlock / sync ---------------- */
 
+/* Is there already a vault for this account? Asked *before* prompting, so
+   first-time setup and a returning unlock can be worded differently instead of
+   sharing one hedged screen. */
+export async function vaultExists() {
+  try {
+    const { exists } = await api("/api/vault/status");
+    return !!exists;
+  } catch {
+    return false;
+  }
+}
+
 // Derives the key, pulls the remote blob, merges it in, and pushes the result.
-// `isNew` skips the "wrong password" diagnosis for a vault being created.
+// Used for both creating a vault and unlocking an existing one — the only
+// difference is what the UI asked for beforehand.
 export async function unlockVault(email, passphrase) {
   vaultState.lastError = "";
   vaultKey = await deriveVaultKey(email, passphrase);
-  vaultEmail = email;
 
   const remote = await pullVault();
   const merged = merge(localSnapshot(), remote || { shares: [], removed: [] });
@@ -175,28 +192,49 @@ export const syncSoon = debounce(() => {
 let onSync = () => {};
 export const onVaultChange = (fn) => (onSync = fn);
 
+
 /* ---------------- UI ----------------
-   The account panel lives at the foot of the share dialog. Which pane shows is
-   a data-vault attribute the stylesheet reacts to — no layout classes from JS. */
+   Account controls live in their own dialog reached from the sidebar, not
+   inside the per-document share dialog — signing in isn't a property of the
+   document you happen to have open. Which pane shows is a data-vault attribute
+   the stylesheet reacts to; no layout classes are toggled from JS.
+
+   Panes: out → sent → (setup | locked) → on */
 
 const EMAIL_KEY = "markread:vault:email";
+const MIN_PASS = 10;
 const el = (id) => $(`#${id}`);
 const setPane = (name) => (el("vault").dataset.vault = name);
+const knownEmail = () => localStorage.getItem(EMAIL_KEY) || "";
 
 function showError(msg) {
   const e = el("vaultErr");
+  if (!e) return;
   e.textContent = msg || "";
   e.hidden = !msg;
 }
 
+/* The sidebar entry and the share dialog's one-line summary both mirror vault
+   state, so neither becomes the only place sync is visible. */
 export function renderVault() {
-  const status = el("vaultStatus");
-  if (!status) return;
+  const btn = el("accountBtn");
+  if (!btn) return;
 
-  if (vaultState.syncing) status.textContent = "syncing…";
-  else if (vaultState.lastError) status.textContent = "sync failed";
-  else if (vaultState.unlocked) status.textContent = "synced";
-  else status.textContent = "";
+  const mode = vaultState.unlocked ? "on" : vaultState.signedIn ? "locked" : "out";
+  btn.dataset.acct = mode;
+  el("accountLabel").textContent =
+    mode === "on" ? (vaultState.syncing ? "Syncing…" : "Links synced") : mode === "locked" ? "Unlock your links" : "Sync your links";
+
+  const line = el("shareSyncText");
+  if (line) {
+    line.textContent =
+      mode === "on"
+        ? `Synced to ${vaultState.email}`
+        : mode === "locked"
+          ? "Signed in — unlock to sync these links"
+          : "These links live in this browser only";
+    el("shareSyncAct").textContent = mode === "on" ? "Manage" : mode === "locked" ? "Unlock" : "Set up sync";
+  }
 
   if (vaultState.unlocked) {
     const n = readShares().length;
@@ -214,43 +252,70 @@ async function doSend() {
   btn.textContent = "Sending…";
   try {
     await requestMagicLink(email);
-    localStorage.setItem(EMAIL_KEY, email); // so the unlock pane can prefill it
+    localStorage.setItem(EMAIL_KEY, email); // lets the next pane prefill it
     setPane("sent");
   } catch (e) {
     showError(e.message || "Could not send that");
   } finally {
     btn.disabled = false;
-    btn.textContent = "Email me a link";
+    btn.textContent = "Send link";
   }
 }
 
-async function doUnlock() {
-  const btn = el("vaultUnlock");
-  const email = el("vaultEmail2").value.trim();
-  const pass = el("vaultPass").value;
+// Shared by "Create vault" and "Unlock" — same derivation, different wording.
+async function enter(btn, email, pass, { confirm } = {}) {
   showError("");
-  if (!email || !pass) return showError("Both your email and master password are needed");
+  if (!email) return showError("Your email address is needed");
+  if (!pass) return showError("Your master password is needed");
+  if (confirm !== undefined) {
+    if (pass.length < MIN_PASS) return showError(`Use at least ${MIN_PASS} characters — this is the only thing protecting your vault`);
+    if (pass !== confirm) return showError("Those two passwords don't match");
+  }
 
+  const label = btn.textContent;
   btn.disabled = true;
-  btn.textContent = "Unlocking…"; // PBKDF2 takes about a second on purpose
+  btn.textContent = "Working…"; // PBKDF2 takes about a second, on purpose
   try {
     await unlockVault(email, pass);
     localStorage.setItem(EMAIL_KEY, email);
-    el("vaultPass").value = "";
+    ["vaultPass", "vaultPass2", "vaultPassU"].forEach((id) => el(id) && (el(id).value = ""));
     setPane("on");
     renderVault();
     onSync();
-    toast("Vault unlocked ✓");
+    toast(confirm !== undefined ? "Vault created ✓" : "Vault unlocked ✓");
   } catch (e) {
     showError(e.message || "Could not unlock");
   } finally {
     btn.disabled = false;
-    btn.textContent = "Unlock";
+    btn.textContent = label;
   }
+}
+
+// Chooses between setup and unlock, then shows the dialog.
+async function openAccount() {
+  showError("");
+  const dlg = el("accountDlg");
+  if (vaultState.unlocked) setPane("on");
+  else if (!vaultState.signedIn) setPane("out");
+  else {
+    setPane((await vaultExists()) ? "locked" : "setup");
+    const known = knownEmail();
+    ["vaultEmail2", "vaultEmail3"].forEach((id) => el(id) && !el(id).value && (el(id).value = known));
+  }
+  if (!dlg.open) dlg.showModal();
 }
 
 export function wireVault() {
   if (!el("vault")) return;
+  const dlg = el("accountDlg");
+
+  el("accountBtn").addEventListener("click", openAccount);
+  el("shareSyncLine").addEventListener("click", () => {
+    el("shareDlg").close();
+    openAccount();
+  });
+  el("acctClose").addEventListener("click", () => dlg.close());
+  dlg.addEventListener("click", (e) => e.target === dlg && dlg.close());
 
   el("vaultSend").addEventListener("click", doSend);
   el("vaultEmail").addEventListener("keydown", (e) => e.key === "Enter" && doSend());
@@ -258,14 +323,32 @@ export function wireVault() {
     showError("");
     setPane("out");
   });
-  el("vaultUnlock").addEventListener("click", doUnlock);
-  el("vaultPass").addEventListener("keydown", (e) => e.key === "Enter" && doUnlock());
+
+  const create = () => enter(el("vaultCreate"), el("vaultEmail2").value.trim(), el("vaultPass").value, { confirm: el("vaultPass2").value });
+  el("vaultCreate").addEventListener("click", create);
+  el("vaultPass2").addEventListener("keydown", (e) => e.key === "Enter" && create());
+
+  const unlock = () => enter(el("vaultUnlock"), el("vaultEmail3").value.trim(), el("vaultPassU").value);
+  el("vaultUnlock").addEventListener("click", unlock);
+  el("vaultPassU").addEventListener("keydown", (e) => e.key === "Enter" && unlock());
+
+  // Drops the derived key without ending the session — useful on a shared machine.
+  el("vaultLock").addEventListener("click", () => {
+    lockVault();
+    setPane("locked");
+    el("vaultEmail3").value = knownEmail();
+    renderVault();
+    toast("Vault locked");
+  });
+
   el("vaultOut").addEventListener("click", async () => {
     await signOut();
     setPane("out");
     renderVault();
     toast("Signed out");
   });
+
+  renderVault();
 }
 
 // Called at boot. A surviving session cookie tells us *who* you are; the master
@@ -279,10 +362,13 @@ export async function bootVault() {
     if (signin === "expired") toast("That sign-in link has expired — request a new one");
   }
 
-  if (!(await refreshSession())) return;
+  if (!(await refreshSession())) {
+    renderVault();
+    return;
+  }
+  renderVault();
 
-  const known = localStorage.getItem(EMAIL_KEY) || "";
-  if (el("vaultEmail2")) el("vaultEmail2").value = known;
-  setPane("locked");
-  if (signin === "ok") toast("Signed in — enter your master password to sync");
+  // Arriving fresh from a magic link, open the dialog rather than making the
+  // user hunt for where to type the password they were just told about.
+  if (signin === "ok") await openAccount();
 }

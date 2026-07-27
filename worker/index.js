@@ -16,7 +16,7 @@
 import { json } from "./lib.js";
 import { createShare, getShare, deleteShare } from "./shares.js";
 import { requestLink, verifyLink, whoami, logout } from "./auth.js";
-import { getVault, putVault } from "./vault.js";
+import { getVault, putVault, vaultStatus } from "./vault.js";
 
 async function route(request, env, url) {
   const { pathname } = url;
@@ -33,12 +33,13 @@ async function route(request, env, url) {
   }
 
   /* ---- accounts + vault ---- */
-  if (pathname.startsWith("/api/auth/") || pathname === "/api/vault") {
+  if (pathname.startsWith("/api/auth/") || pathname.startsWith("/api/vault")) {
     if (!env.VAULT) return json({ error: "Accounts are not configured on this deployment" }, 501);
     if (pathname === "/api/auth/request" && method === "POST") return requestLink(request, env, url);
     if (pathname === "/api/auth/verify" && method === "GET") return verifyLink(request, env, url);
     if (pathname === "/api/auth/me" && method === "GET") return whoami(request, env);
     if (pathname === "/api/auth/logout" && method === "POST") return logout(request, env, url);
+    if (pathname === "/api/vault/status" && method === "GET") return vaultStatus(request, env);
     if (pathname === "/api/vault" && method === "GET") return getVault(request, env);
     if (pathname === "/api/vault" && method === "PUT") return putVault(request, env, url);
     return json({ error: "Not found" }, 404);
