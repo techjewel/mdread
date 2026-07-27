@@ -30,7 +30,10 @@ export default defineConfig({
       workbox: {
         // precache the hashed build output (Workbox fills in the real filenames)
         globPatterns: ["**/*.{js,css,html,svg,png,webmanifest}"],
+        // /s/<id> share links must resolve to the app shell offline too, but the
+        // share API is never a navigation and must never be served from cache.
         navigateFallback: "/index.html",
+        navigateFallbackDenylist: [/^\/api\//],
       },
       // no service worker in `vite dev` — it only gets in the way locally
       devOptions: { enabled: false },

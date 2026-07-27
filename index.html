@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>mdread — a quiet reading room for markdown</title>
-  <meta name="description" content="A local-first, privacy-first markdown reader. Drop a file or a folder, read beautifully, edit, and download. Your files never leave your device — no upload, no account, no tracking." />
+  <meta name="description" content="A local-first, privacy-first markdown reader. Drop a file or a folder, read beautifully, edit, and download — all on your device. Nothing is uploaded unless you share, and share links are end-to-end encrypted, so the server can't read them. No account, no tracking." />
   <meta name="theme-color" content="#faf6ef" media="(prefers-color-scheme: light)" />
   <meta name="theme-color" content="#16140f" media="(prefers-color-scheme: dark)" />
 
@@ -13,14 +13,14 @@
   <meta property="og:site_name" content="mdread" />
   <meta property="og:url" content="https://mdread.app/" />
   <meta property="og:title" content="mdread — a quiet reading room for markdown" />
-  <meta property="og:description" content="Privacy-first, local-first. Drop a file or a folder, read beautifully, edit, and download — all on your device. Nothing is ever uploaded." />
+  <meta property="og:description" content="Privacy-first, local-first. Read and edit markdown entirely on your device. Nothing is uploaded unless you share — and shares are end-to-end encrypted, so we can't read them." />
   <meta property="og:image" content="https://mdread.app/og-image.png?v=2" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
-  <meta property="og:image:alt" content="mdread — a quiet reading room for your markdown. Private, local-first, offline." />
+  <meta property="og:image:alt" content="mdread — a quiet reading room for your markdown. Private, local-first, offline, with end-to-end encrypted sharing." />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="mdread — a quiet reading room for markdown" />
-  <meta name="twitter:description" content="Privacy-first, local-first. Drop a file or a folder, read beautifully, edit, and download — all on your device." />
+  <meta name="twitter:description" content="Privacy-first, local-first. Read and edit markdown on your device, and share with end-to-end encrypted links the server can't read." />
   <meta name="twitter:image" content="https://mdread.app/og-image.png?v=2" />
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
@@ -101,6 +101,19 @@
 
     <!-- ░░ Reading column ░░ -->
     <main class="main" id="main">
+      <!-- shown only when the app booted from a share link (data-shared on #app) -->
+      <div class="sharedbar" id="sharedBar">
+        <span class="sharedbar__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none"><rect x="5" y="11" width="14" height="9" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M8 11V8a4 4 0 0 1 8 0v3" stroke="currentColor" stroke-width="1.5"/></svg>
+        </span>
+        <span class="sharedbar__text">
+          <strong id="sharedName"></strong>
+          <span id="sharedCount"></span>
+        </span>
+        <span class="sharedbar__badge">Decrypted in your browser</span>
+        <a class="btn btn--tiny" href="/">Open mdread</a>
+      </div>
+
       <div class="topbar" id="topbar">
         <button class="icon-btn topbar__expand" id="expandBtn" title="Show sidebar (⌘\)" aria-label="Show sidebar" hidden>
           <svg viewBox="0 0 24 24" width="18" height="18"><path d="M10 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -122,6 +135,9 @@
           </button>
           <button class="icon-btn" id="downloadBtn" title="Download .md" aria-label="Download">
             <svg viewBox="0 0 24 24" width="18" height="18"><path d="M12 4v10m0 0 4-4m-4 4-4-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 19h14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          </button>
+          <button class="icon-btn" id="shareBtn" title="Share — end-to-end encrypted (⇧⌘S)" aria-label="Share">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none"><path d="M10.6 13.4a3.6 3.6 0 0 0 5.1 0l2.7-2.7a3.6 3.6 0 0 0-5.1-5.1l-1.2 1.2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M13.4 10.6a3.6 3.6 0 0 0-5.1 0l-2.7 2.7a3.6 3.6 0 0 0 5.1 5.1l1.2-1.2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
           </button>
           <button class="icon-btn" id="tocBtn" title="Contents (t)" aria-label="Table of contents">
             <svg viewBox="0 0 24 24" width="18" height="18"><path d="M9 6h11M9 12h11M9 18h11" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="4.5" cy="6" r="1.2" fill="currentColor"/><circle cx="4.5" cy="12" r="1.2" fill="currentColor"/><circle cx="4.5" cy="18" r="1.2" fill="currentColor"/></svg>
@@ -155,7 +171,7 @@
             </svg>
           </span>
           <h1 class="welcome__title">A quiet reading room<br/>for your markdown.</h1>
-          <p class="welcome__lede">Drop a file or a whole folder anywhere on this page. It's read right here in your browser — <strong>nothing is ever uploaded.</strong></p>
+          <p class="welcome__lede">Drop a file or a whole folder anywhere on this page. It's read right here in your browser — <strong>nothing is uploaded unless you choose to share.</strong></p>
           <div class="welcome__actions">
             <button class="btn btn--primary" id="welcomeNew">Write something new</button>
             <button class="btn" id="welcomeFolder">Open a folder</button>
@@ -174,7 +190,7 @@
                 <svg viewBox="0 0 24 24" width="22" height="22" fill="none"><rect x="5" y="11" width="14" height="9" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M8 11V8a4 4 0 0 1 8 0v3" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="15.5" r="1.4" fill="currentColor"/></svg>
               </span>
               <h3 class="wf__t">Private by design</h3>
-              <p class="wf__d">Files are read in your browser and <strong>never leave your device</strong>. No account, no tracking, no server — not even web fonts.</p>
+              <p class="wf__d">Files are read in your browser and <strong>never leave your device</strong>. Share one and it's encrypted here first — the key rides in the link, so <strong>the server can't read it</strong>. No account, no tracking.</p>
             </li>
             <li class="wf">
               <span class="wf__icon" aria-hidden="true">
@@ -198,6 +214,19 @@
           </a>
 
           <p class="welcome__hint" id="welcomeHint"></p>
+        </div>
+      </section>
+
+      <!-- a share link that couldn't be opened (expired, revoked, or truncated) -->
+      <section class="sharedfail" id="sharedFail">
+        <div class="sharedfail__inner">
+          <span class="sharedfail__mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="38" height="38" fill="none"><rect x="5" y="11" width="14" height="9" rx="2" stroke="currentColor" stroke-width="1.3"/><path d="M8 11V8a4 4 0 0 1 6.9-2.7" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+          </span>
+          <h1 class="sharedfail__title">This link didn't open</h1>
+          <p class="sharedfail__msg" id="sharedError"></p>
+          <p class="sharedfail__hint">Share links expire, can be revoked by their author, and stop working if the address gets cut short when it's copied.</p>
+          <a class="btn btn--primary" href="/">Go to mdread</a>
         </div>
       </section>
 
@@ -250,6 +279,114 @@
       <button class="toggle" id="dropcapToggle" role="switch" aria-checked="true"><span></span></button>
     </div>
   </div>
+
+  <!-- share dialog -->
+  <dialog class="dlg" id="shareDlg" aria-labelledby="shareTitle">
+    <button class="dlg__x" id="shareClose" aria-label="Close">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+    </button>
+
+    <h2 class="dlg__title" id="shareTitle">Share this document</h2>
+    <p class="dlg__lede">Encrypted in your browser before it leaves. The key travels in the link itself, never to the server — <strong>we can't read what you share.</strong></p>
+
+    <fieldset class="share__group">
+      <legend class="share__legend">What to share</legend>
+      <label class="share__opt">
+        <input type="radio" name="shareScope" id="shareScopeFile" checked />
+        <span class="share__opt-t">Just this file</span>
+      </label>
+      <label class="share__opt">
+        <input type="radio" name="shareScope" id="shareScopeFolder" />
+        <span class="share__opt-t">Everything open <em id="shareFolderCount"></em></span>
+        <span class="share__opt-d">Recipients get the same browsable file tree you see.</span>
+      </label>
+    </fieldset>
+
+    <fieldset class="share__group">
+      <legend class="share__legend">Link type</legend>
+      <label class="share__opt">
+        <input type="radio" name="shareLinkType" id="shareStored" checked />
+        <span class="share__opt-t">Encrypted link</span>
+        <span class="share__opt-d">Ciphertext is stored on the server and expires on its own. You can revoke it any time.</span>
+      </label>
+      <label class="share__opt">
+        <input type="radio" name="shareLinkType" id="shareInline" />
+        <span class="share__opt-t">Self-contained link</span>
+        <span class="share__opt-d">Nothing is uploaded at all — the whole document rides inside the URL. Small files only, and it can't be revoked.</span>
+      </label>
+    </fieldset>
+
+    <div class="share__inline-row" id="shareExpiryRow">
+      <label for="shareExpiry">Expires</label>
+      <select id="shareExpiry">
+        <option value="7">in 7 days</option>
+        <option value="30" selected>in 30 days</option>
+        <option value="365">in a year</option>
+      </select>
+    </div>
+
+    <p class="share__err" id="shareError" hidden></p>
+
+    <button class="btn btn--primary btn--wide" id="shareCreate">Create link</button>
+
+    <div class="share__result" id="shareResult" hidden>
+      <div class="share__url-row">
+        <input id="shareUrl" class="share__url" readonly spellcheck="false" />
+        <button class="btn" id="shareCopy">Copy</button>
+      </div>
+      <p class="share__note">Anyone with this link can read the document. Treat it like a password — and copy it whole, it stops working if it gets cut short.</p>
+    </div>
+
+    <div class="share__list-wrap" id="shareListWrap" hidden>
+      <div class="share__list-head">Links you've created</div>
+      <div class="share__list" id="shareList"></div>
+    </div>
+
+    <!-- account + synced vault. data-vault (out|sent|locked|on) picks the pane. -->
+    <div class="vault" id="vault" data-vault="out">
+      <div class="vault__head">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" aria-hidden="true"><rect x="4" y="10" width="16" height="10" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M8 10V7.5a4 4 0 0 1 8 0V10" stroke="currentColor" stroke-width="1.5"/></svg>
+        <span>Sync your links</span>
+        <span class="vault__status" id="vaultStatus"></span>
+      </div>
+
+      <div class="vault__pane" data-pane="out">
+        <p class="vault__d">These links live in this browser only. Sign in to keep them when you clear your browser or move to another device.</p>
+        <div class="vault__row">
+          <input type="email" id="vaultEmail" placeholder="you@example.com" autocomplete="email" spellcheck="false" />
+          <button class="btn btn--tiny" id="vaultSend">Email me a link</button>
+        </div>
+      </div>
+
+      <div class="vault__pane" data-pane="sent">
+        <p class="vault__d">Check your inbox. The link works once, expires in 15 minutes, and needs to be opened in this browser.</p>
+        <button class="btn btn--tiny" id="vaultBack">Use a different address</button>
+      </div>
+
+      <div class="vault__pane" data-pane="locked">
+        <p class="vault__d">Enter your master password to unlock this vault.</p>
+        <div class="vault__row">
+          <input type="email" id="vaultEmail2" placeholder="you@example.com" autocomplete="email" spellcheck="false" />
+        </div>
+        <div class="vault__row">
+          <input type="password" id="vaultPass" placeholder="Master password" autocomplete="current-password" />
+          <button class="btn btn--tiny" id="vaultUnlock">Unlock</button>
+        </div>
+        <p class="vault__warn">
+          <strong>Setting this for the first time?</strong> Whatever you type becomes your master password.
+          It never reaches mdread, so it cannot be reset or recovered — if you forget it, the vault is gone.
+          Write it down somewhere safe.
+        </p>
+      </div>
+
+      <div class="vault__pane" data-pane="on">
+        <p class="vault__d">Syncing <strong id="vaultCount">0 links</strong> to <span id="vaultWho"></span>.</p>
+        <button class="btn btn--tiny" id="vaultOut">Sign out</button>
+      </div>
+
+      <p class="vault__err" id="vaultErr" hidden></p>
+    </div>
+  </dialog>
 
   <!-- transient toast -->
   <div class="toast" id="toast" hidden></div>

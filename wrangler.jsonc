@@ -1,9 +1,23 @@
 {
-  // mdread — static site served from Cloudflare Workers Assets.
-  // No backend. Vite builds ./src + ./public into ./dist, and that's what we serve.
+  // mdread — the static site plus a deliberately blind share API.
   //
-  //   npm run deploy        → publishes to a free *.workers.dev URL  (what forks get)
-  //   npm run deploy:prod   → publishes to the custom domain below   (maintainer)
+  // The app itself is still local-first: ./dist is served straight from Workers
+  // Assets and the Worker only ever runs for /api/*. What it stores is opaque
+  // ciphertext — the decryption key lives in the URL fragment and never reaches
+  // us. See worker/index.js and src/modules/crypto.js.
+  //
+  //   npm run dev          → vite dev server (no Worker; sharing is disabled)
+  //   npm run dev:worker   → wrangler dev, the real thing including /api/*
+  //   npm run deploy       → publishes to a free *.workers.dev URL  (what forks get)
+  //   npm run deploy:prod  → publishes to the custom domain below   (maintainer)
+  //
+  // ── Secrets, for sign-in emails ──────────────────────────────────────
+  //   wrangler secret put TOSEND_API_KEY        # from tosend.com
+  //   wrangler secret put MAIL_FROM             # e.g. "mdread <login@mdread.app>"
+  // Mail goes through ToSend (https://tosend.com/docs/api/send-email/). Without
+  // these, magic links are written to the Worker log instead of sent, which is how
+  // local development works. They are never put in an HTTP response.
+  // The sending domain must be verified with ToSend or the API answers 422.
   //
   // Account handling:
   //   - base config (`npm run deploy`): no account_id — forks deploy to THEIR
@@ -13,25 +27,95 @@
   //     is an identifier, not a secret; forks don't use this env, so it's harmless.
   // Find an account id with `wrangler whoami` or the dashboard.
   //
-  // Forking? Change "name", and set your own account_id + domain under env.production.
+  // Forking? Change "name", set your own account_id + domain under env.production,
+  // and create your own KV namespaces.
   "name": "mdread",
-  "compatibility_date": "2025-01-01",
+  "main": "worker/index.js",
+  // newest date the pinned wrangler runtime supports; bump alongside wrangler
+  "compatibility_date": "2026-06-02",
+  "compatibility_flags": ["nodejs_compat"],
   // instant-access *.workers.dev URL (works while a custom-domain cert provisions)
   "workers_dev": true,
   "assets": {
     "directory": "./dist",
-    // unknown paths fall back to the app shell (this is a single-page app)
-    "not_found_handling": "single-page-application"
+    // lets the Worker fall back to the static app for non-API paths
+    "binding": "ASSETS",
+    // unknown paths fall back to the app shell (this is a single-page app),
+    // which is also how /s/<id> share links resolve
+    "not_found_handling": "single-page-application",
+    // only the share API reaches the Worker; every other request is served
+    // straight from assets, so the reader stays a pure static site
+    "run_worker_first": ["/api/*"]
+  },
+  // Forking? These belong to the maintainer's account. Create your own with
+  // `wrangler kv namespace create SHARES` (and `--preview`, and the same for VAULT),
+  // then paste the ids here — an id is an identifier, not a secret, but it only
+  // resolves inside the account that owns it.
+  "kv_namespaces": [
+    {
+      "binding": "SHARES",
+      "id": "769bbbd3b75a4f369bd798d8d3f4c66e",
+      "preview_id": "941b58a3f5424169ac5feffad5a517d8"
+    },
+    {
+      // Accounts and the synced share-link vault. Separate from SHARES because
+      // shares expire and vaults don't, and so a fork can run one without the other.
+      "binding": "VAULT",
+      "id": "10f2860e82ba4f69a10a499ba1ee7820",
+      "preview_id": "faba139347d145f7b9f5320a2bf0af5f"
+    }
+  ],
+  // 20 new links per minute per IP — generous for a person, useless for a spammer.
+  // AUTH_LIMIT is tighter because each request sends an email to someone else's inbox.
+  // `period` must be 10 or 60. namespace_id is a local identifier, not an account resource.
+  "ratelimits": [
+    {
+      "name": "SHARE_LIMIT",
+      "namespace_id": "1001",
+      "simple": { "limit": 20, "period": 60 }
+    },
+    {
+      "name": "AUTH_LIMIT",
+      "namespace_id": "1002",
+      "simple": { "limit": 5, "period": 60 }
+    }
+  ],
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 0.1
   },
   "env": {
-    // Production deploy target. `routes` is a per-environment key (not inherited),
-    // so `assets` is repeated here. Deploy with `wrangler deploy --env production`.
+    // Production deploy target. `routes`, `assets` and bindings are per-environment
+    // keys (not inherited), so they are repeated here. Deploy with
+    // `wrangler deploy --env production`.
     "production": {
       "name": "mdread",
       "account_id": "bc1a1c44574db2c6033e81bbc745abd0",
       "assets": {
         "directory": "./dist",
-        "not_found_handling": "single-page-application"
+        "binding": "ASSETS",
+        "not_found_handling": "single-page-application",
+        "run_worker_first": ["/api/*"]
+      },
+      "kv_namespaces": [
+        { "binding": "SHARES", "id": "769bbbd3b75a4f369bd798d8d3f4c66e" },
+        { "binding": "VAULT", "id": "10f2860e82ba4f69a10a499ba1ee7820" }
+      ],
+      "ratelimits": [
+        {
+          "name": "SHARE_LIMIT",
+          "namespace_id": "1001",
+          "simple": { "limit": 20, "period": 60 }
+        },
+        {
+          "name": "AUTH_LIMIT",
+          "namespace_id": "1002",
+          "simple": { "limit": 5, "period": 60 }
+        }
+      ],
+      "observability": {
+        "enabled": true,
+        "head_sampling_rate": 0.1
       },
       "routes": [
         { "pattern": "mdread.app", "custom_domain": true }

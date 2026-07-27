@@ -1,0 +1,244 @@
+/* ================= Sharing =================
+   The share dialog, the banner shown when the app booted from a share link,
+   and the failure screen for links that expired or arrived truncated.
+
+   Visibility is driven by data-shared on #app ("loading" | "on" | "error"),
+   set by share.js — no layout classes are toggled from JS. */
+
+/* ---------- dialog ---------- */
+.dlg {
+  width: min(30rem, calc(100vw - 2rem));
+  max-height: calc(100vh - 4rem);
+  overflow-y: auto;
+  padding: 1.5rem 1.6rem 1.6rem;
+  border: 1px solid var(--line-2);
+  border-radius: 16px;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+}
+.dlg::backdrop {
+  background: color-mix(in srgb, var(--paper) 62%, transparent);
+  backdrop-filter: blur(5px);
+}
+.dlg[open] { animation: pop .18s var(--ease) both; }
+
+.dlg__x {
+  position: absolute; top: .85rem; right: .9rem;
+  display: grid; place-items: center;
+  width: 1.9rem; height: 1.9rem; border-radius: 8px;
+  color: var(--ink-faint); transition: .16s var(--ease);
+}
+.dlg__x:hover { color: var(--accent); background: var(--paper-2); }
+
+.dlg__title {
+  font-family: var(--display); font-size: 1.3rem; font-weight: 600;
+  letter-spacing: -.01em; margin: 0 2rem .4rem 0;
+}
+.dlg__lede {
+  font-family: var(--sans); font-size: .82rem; line-height: 1.55;
+  color: var(--ink-soft); margin: 0 0 1.2rem;
+}
+.dlg__lede strong { color: var(--ink); font-weight: 600; }
+
+/* ---------- dialog groups ---------- */
+.share__group { border: 0; padding: 0; margin: 0 0 1.1rem; }
+.share__legend {
+  font-family: var(--ui); font-size: .68rem; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--ink-faint);
+  padding: 0; margin-bottom: .5rem;
+}
+
+.share__opt {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0 .6rem;
+  padding: .6rem .7rem;
+  border: 1px solid transparent; border-radius: 10px;
+  cursor: pointer; transition: .14s var(--ease);
+}
+.share__opt:hover { background: var(--paper-2); }
+.share__opt:has(input:checked) { border-color: var(--accent-soft); background: var(--paper-2); }
+.share__opt input { accent-color: var(--accent); margin-top: .15rem; }
+
+.share__opt-t { font-family: var(--sans); font-size: .84rem; color: var(--ink); }
+.share__opt-t em { font-style: normal; color: var(--ink-faint); }
+.share__opt-d {
+  grid-column: 2;
+  font-family: var(--sans); font-size: .74rem; line-height: 1.45;
+  color: var(--ink-soft); margin-top: .15rem;
+}
+
+.share__inline-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 1rem; margin-bottom: 1.1rem;
+}
+.share__inline-row label {
+  font-family: var(--ui); font-size: .72rem; color: var(--ink-soft);
+}
+.share__inline-row select {
+  font-family: var(--ui); font-size: .76rem; color: var(--ink);
+  padding: .4rem .6rem; border-radius: 8px;
+  border: 1px solid var(--line-2); background: var(--paper);
+}
+
+.share__err {
+  font-family: var(--sans); font-size: .78rem; line-height: 1.45;
+  color: var(--accent); background: var(--paper-2);
+  border: 1px solid var(--accent-soft); border-radius: 9px;
+  padding: .55rem .7rem; margin: 0 0 .8rem;
+}
+
+/* ---------- result ---------- */
+.share__result { margin-top: 1rem; animation: rise .2s var(--ease) both; }
+.share__url-row { display: flex; gap: .45rem; }
+.share__url {
+  flex: 1; min-width: 0;
+  font-family: var(--mono); font-size: .72rem; color: var(--ink);
+  padding: .55rem .7rem; border-radius: 9px;
+  border: 1px solid var(--line-2); background: var(--paper);
+}
+.share__note {
+  font-family: var(--sans); font-size: .73rem; line-height: 1.5;
+  color: var(--ink-soft); margin: .6rem 0 0;
+}
+
+/* ---------- your links ---------- */
+.share__list-wrap { margin-top: 1.4rem; border-top: 1px solid var(--line); padding-top: 1rem; }
+.share__list-head {
+  font-family: var(--ui); font-size: .68rem; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--ink-faint); margin-bottom: .55rem;
+}
+.share__list { display: flex; flex-direction: column; gap: .3rem; }
+.share__row {
+  display: flex; align-items: center; gap: .45rem;
+  padding: .45rem .55rem; border-radius: 9px;
+}
+.share__row:hover { background: var(--paper-2); }
+.share__row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.share__row-name {
+  font-family: var(--sans); font-size: .8rem; color: var(--ink);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.share__row-meta { font-family: var(--ui); font-size: .67rem; color: var(--ink-faint); }
+
+/* ---------- account + synced vault ----------
+   data-vault on #vault is out | sent | locked | on; only the matching pane shows. */
+.vault {
+  margin-top: 1.4rem; padding-top: 1rem;
+  border-top: 1px solid var(--line);
+}
+.vault__head {
+  display: flex; align-items: center; gap: .4rem;
+  font-family: var(--ui); font-size: .68rem; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--ink-faint); margin-bottom: .55rem;
+}
+.vault__status {
+  margin-left: auto; text-transform: none; letter-spacing: .02em;
+  color: var(--ink-soft);
+}
+
+.vault__pane { display: none; }
+.vault[data-vault="out"]    .vault__pane[data-pane="out"],
+.vault[data-vault="sent"]   .vault__pane[data-pane="sent"],
+.vault[data-vault="locked"] .vault__pane[data-pane="locked"],
+.vault[data-vault="on"]     .vault__pane[data-pane="on"] { display: block; }
+
+.vault__d {
+  font-family: var(--sans); font-size: .76rem; line-height: 1.5;
+  color: var(--ink-soft); margin: 0 0 .55rem;
+}
+.vault__d strong { color: var(--ink); }
+.vault__row { display: flex; gap: .4rem; margin-bottom: .45rem; }
+.vault__row input {
+  flex: 1; min-width: 0;
+  font-family: var(--sans); font-size: .78rem; color: var(--ink);
+  padding: .45rem .6rem; border-radius: 8px;
+  border: 1px solid var(--line-2); background: var(--paper);
+}
+.vault__row input:focus { outline: none; border-color: var(--accent); }
+
+/* The one consequence people must not miss. */
+.vault__warn {
+  font-family: var(--sans); font-size: .72rem; line-height: 1.5;
+  color: var(--ink-soft); margin: .5rem 0 0;
+  padding: .5rem .6rem; border-radius: 8px;
+  background: var(--paper-2); border: 1px solid var(--accent-soft);
+}
+.vault__warn strong { color: var(--accent); }
+
+.vault__err {
+  font-family: var(--sans); font-size: .75rem; line-height: 1.45;
+  color: var(--accent); margin: .5rem 0 0;
+}
+
+/* ---------- button modifiers used by the dialog ---------- */
+.btn--wide { width: 100%; }
+.btn--tiny { padding: .32rem .6rem; font-size: .7rem; border-radius: 7px; }
+.btn--danger { color: var(--accent); }
+.btn--danger:hover { background: var(--accent); border-color: var(--accent); color: var(--paper); }
+html[data-theme="night"] .btn--danger:hover { color: #1a1610; }
+.btn:disabled { opacity: .55; pointer-events: none; }
+
+/* ================= Reading someone else's share ================= */
+
+/* hidden unless the app booted from a link */
+.sharedbar { display: none; }
+.sharedfail { display: none; }
+
+.app[data-shared="on"] .sharedbar {
+  display: flex; align-items: center; gap: .6rem;
+  padding: .5rem clamp(.9rem, 3vw, 1.5rem);
+  border-bottom: 1px solid var(--line);
+  background: var(--paper-2);
+}
+.sharedbar__icon { display: grid; place-items: center; color: var(--accent); }
+.sharedbar__text { display: flex; align-items: baseline; gap: .5rem; min-width: 0; }
+.sharedbar__text strong {
+  font-family: var(--sans); font-size: .82rem; font-weight: 600; color: var(--ink);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.sharedbar__text span { font-family: var(--ui); font-size: .68rem; color: var(--ink-faint); white-space: nowrap; }
+.sharedbar__badge {
+  margin-left: auto;
+  font-family: var(--ui); font-size: .66rem; letter-spacing: .03em;
+  color: var(--ink-soft); border: 1px solid var(--line-2);
+  border-radius: 99px; padding: .2rem .55rem; white-space: nowrap;
+}
+
+/* A shared document is someone else's: no saving, no mode switching, and no
+   local-library controls. Reading settings and the tree stay — that's the point. */
+.app[data-shared="on"] #saveBtn,
+.app[data-shared="on"] #shareBtn,
+.app[data-shared="on"] .seg,
+.app[data-shared="on"] .sources,
+.app[data-shared="on"] .curfolder,
+.app[data-shared="on"] .recents { display: none; }
+
+/* no document open yet — nothing to share */
+.app:not([data-has-doc="true"]) #shareBtn { display: none; }
+
+/* ---------- a link that didn't open ---------- */
+.app[data-shared="error"] .topbar,
+.app[data-shared="error"] .panes,
+.app[data-shared="error"] .welcome,
+.app[data-shared="error"] .sidebar,
+.app[data-shared="error"] .toc { display: none; }
+.app[data-shared="error"] { grid-template-columns: 0 1fr; }
+
+.app[data-shared="error"] .sharedfail {
+  display: grid; place-items: center;
+  height: 100%; padding: 2rem;
+  text-align: center;
+}
+.sharedfail__inner { max-width: 26rem; display: grid; justify-items: center; gap: .5rem; }
+.sharedfail__mark { color: var(--ink-faint); opacity: .7; }
+.sharedfail__title {
+  font-family: var(--display); font-size: 1.5rem; font-weight: 600;
+  letter-spacing: -.015em; margin: .4rem 0 0;
+}
+.sharedfail__msg { font-family: var(--sans); font-size: .9rem; color: var(--ink); margin: 0; }
+.sharedfail__hint {
+  font-family: var(--sans); font-size: .78rem; line-height: 1.55;
+  color: var(--ink-soft); margin: 0 0 .8rem;
+}

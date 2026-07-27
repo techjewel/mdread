@@ -19,7 +19,7 @@ export function openSample() {
 
 const SAMPLE = `# A quiet reading room
 
-mdread turns any markdown file into something worth lingering over. Drop a single file or an entire folder onto this page — it all stays on your device, and nothing is ever uploaded.
+mdread turns any markdown file into something worth lingering over. Drop a single file or an entire folder onto this page — it all stays on your device, and nothing is uploaded unless you choose to share.
 
 > "The reading of all good books is like a conversation with the finest minds of past centuries."
 > — René Descartes
@@ -32,6 +32,8 @@ mdread turns any markdown file into something worth lingering over. Drop a singl
 - Switch between **Day**, **Sepia**, and **Night** to suit the light
 
 This is a *local-first* tool. Open a folder once and mdread remembers it — your library is waiting the next time you visit.
+
+When you do want someone else to read something, **Share** seals it in your browser first and puts the key in the link itself, so the server only ever holds bytes it can't decrypt.
 
 ### A few touches for the eyes
 

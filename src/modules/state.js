@@ -3,11 +3,12 @@
 import { readJSON, debounce } from "./util.js";
 
 export const state = {
-  files: [], // { name, path, handle?, file?, content?, dirty?, draft? }
+  files: [], // { name, path, handle?, file?, content?, dirty?, draft?, fromShare? }
   current: null,
   rootHandle: null,
   rootName: "",
   filter: "",
+  shared: false, // booted from a share link — read-only, no local library
 };
 
 /* ---------------- Preferences ---------------- */

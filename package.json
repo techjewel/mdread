@@ -6,6 +6,7 @@
   "description": "A local-first markdown reader you can host on Cloudflare. Drop a file or folder, read beautifully, edit, download.",
   "scripts": {
     "dev": "vite",
+    "dev:worker": "vite build && wrangler dev",
     "build": "vite build",
     "preview": "vite preview",
     "deploy": "vite build && wrangler deploy",
