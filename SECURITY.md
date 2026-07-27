@@ -23,9 +23,15 @@ Two credentials with two separate jobs:
 
 - **Email magic link** proves which account you are. The server stores
   `SHA-256(email)` and never persists the address itself.
-- **Master password** encrypts the link list. It is stretched with PBKDF2-SHA256
+- **Master password** encrypts the vault. It is stretched with PBKDF2-SHA256
   (600,000 iterations) in the browser and is never transmitted in any form —
-  not hashed, not derived, not at all.
+  not hashed, not derived, not at all — nor stored, on the device or anywhere else.
+
+The *derived key* may be kept in IndexedDB so a reload doesn't re-prompt. It is
+created non-extractable, so `crypto.subtle.exportKey` refuses to return its bytes
+even to script running on the page. Anyone with access to the browser profile can
+still open the vault while it's remembered; "Lock now" and "Sign out" erase it.
+**A key that can be exported, or a stored master password, is a vulnerability.**
 
 So authentication decides *which ciphertext you are handed*; it never grants the
 ability to read it. A forgotten master password is unrecoverable by design, and

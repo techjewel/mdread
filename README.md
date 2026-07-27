@@ -233,8 +233,15 @@ Two credentials, two jobs, deliberately separated:
 | Master password | Encrypts the link list | **Never.** Not hashed, not sent, not at all |
 
 The master password is stretched with PBKDF2-SHA256 (600,000 iterations) in your browser,
-using your email as the salt. The derived key lives in memory for the session only, so
-closing the tab re-locks the vault.
+using your email as the salt. **The password itself is never stored anywhere, in any form.**
+
+By default the derived key is kept in IndexedDB so a reload doesn't ask again ("Stay
+unlocked on this device"; untick it and the key lives only for that tab's lifetime). This
+is safe in a way that stashing a password in `localStorage` would not be: the key is
+created **non-extractable**, so it can be used for encrypt/decrypt but `exportKey` refuses
+to return its bytes — to mdread, and to anything injected into the page. The honest
+residual risk, which the checkbox states: anyone who can use that browser profile can open
+the vault. **Lock now** and **Sign out** both erase the stored key.
 
 **A forgotten master password cannot be reset.** Not by you, not by us — the server has
 no copy of it and no copy of the key. That's the direct consequence of the server being

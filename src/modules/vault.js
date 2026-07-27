@@ -22,6 +22,7 @@ import { toast } from "./ui.js";
 import { state } from "./state.js";
 import { renderTree } from "./tree.js";
 import { openDoc } from "./document.js";
+import { idbSet, idbGet, idbDel } from "./idb.js";
 
 /* v1 held only share links. v2 adds a document index; v1 blobs are migrated on
    read rather than rejected, so an existing vault keeps working. */
@@ -49,13 +50,24 @@ const writeDocTombs = (list) => localStorage.setItem(DOCS_TOMB_KEY, JSON.stringi
 
 const newDocId = () => toB64url(crypto.getRandomValues(new Uint8Array(9)));
 
-/* Session-scoped, deliberately not persisted: the derived key lives in memory
-   only, so closing the tab re-locks the vault. */
+/* The derived key. Optionally persisted to IndexedDB so a reload doesn't demand
+   the master password again.
+
+   This is safe to store in a way that localStorage would not be: deriveVaultKey
+   creates the key as **non-extractable**, so structured-clone keeps it usable
+   for encrypt/decrypt while `crypto.subtle.exportKey` refuses to hand back the
+   bytes — to us, and to anything injected into the page. The password itself is
+   never stored in any form.
+
+   The residual risk is real and stated in the UI: anyone who can use this
+   browser profile can open the vault. Hence the opt-out and "Lock now". */
+const KEY_STORE = "vaultKey";
 let vaultKey = null;
 
 export const vaultState = {
   signedIn: false, // a valid session cookie exists
-  unlocked: false, // …and the master password has been entered this session
+  unlocked: false, // …and the key is in hand, entered now or restored from IndexedDB
+  remembered: false, // the key is persisted on this device
   email: "",
   syncing: false,
   lastError: "",
@@ -95,15 +107,41 @@ export async function signOut() {
   } catch {
     /* the local session is dropped either way */
   }
-  lockVault();
+  await lockVault();
   vaultState.signedIn = false;
 }
 
-/* Drops the derived key but keeps the session — the shared-machine case, and
-   what closing the tab does implicitly. */
+/* Drops the derived key, from memory and from this device. */
 export function lockVault() {
   vaultKey = null;
-  Object.assign(vaultState, { unlocked: false, email: "", lastError: "" });
+  Object.assign(vaultState, { unlocked: false, email: "", lastError: "", remembered: false });
+  return idbDel(KEY_STORE).catch(() => {});
+}
+
+/* Restores a key kept from a previous visit. The key is proved by actually
+   decrypting the vault, so a stale one (the vault was rebuilt elsewhere under a
+   different password) is discarded rather than left to fail later. */
+async function restoreKey() {
+  let stored;
+  try {
+    stored = await idbGet(KEY_STORE);
+  } catch {
+    return false;
+  }
+  if (!stored) return false;
+
+  vaultKey = stored;
+  try {
+    const remote = await pullVault();
+    applyLocally(merge(localSnapshot(), remote || { shares: [], removed: [], docs: [], docsRemoved: [] }));
+  } catch {
+    vaultKey = null;
+    await idbDel(KEY_STORE).catch(() => {});
+    return false;
+  }
+
+  Object.assign(vaultState, { unlocked: true, email: knownEmail(), remembered: true });
+  return true;
 }
 
 /* ---------------- merge ----------------
@@ -164,11 +202,15 @@ export async function vaultExists() {
 // Derives the key, pulls the remote blob, merges it in, and pushes the result.
 // Used for both creating a vault and unlocking an existing one — the only
 // difference is what the UI asked for beforehand.
-export async function unlockVault(email, passphrase) {
+export async function unlockVault(email, passphrase, { remember = true } = {}) {
   vaultState.lastError = "";
   vaultKey = await deriveVaultKey(email, passphrase);
 
   const remote = await pullVault();
+
+  // Only persist once the key has proved itself against the stored vault.
+  await (remember ? idbSet(KEY_STORE, vaultKey) : idbDel(KEY_STORE)).catch(() => {});
+  vaultState.remembered = remember;
   const merged = merge(localSnapshot(), remote || { shares: [], removed: [], docs: [], docsRemoved: [] });
   applyLocally(merged);
 
@@ -310,8 +352,22 @@ export const onVaultChange = (fn) => (onSync = fn);
 const EMAIL_KEY = "markread:vault:email";
 const MIN_PASS = 10;
 const el = (id) => $(`#${id}`);
-const setPane = (name) => (el("vault").dataset.vault = name);
 const knownEmail = () => localStorage.getItem(EMAIL_KEY) || "";
+
+/* Inactive panes stay in the DOM but are display:none, which leaves several
+   hidden password fields on the page. Password managers attach their inline
+   menu to those, then see the field vanish when the pane switches, and disable
+   themselves on the whole page as a safety measure (Bitwarden says so out
+   loud). Disabled inputs are ignored by autofill, so only the visible pane's
+   fields are ever candidates. */
+function setPane(name) {
+  const box = el("vault");
+  box.dataset.vault = name;
+  box.querySelectorAll(".vault__pane").forEach((pane) => {
+    const active = pane.dataset.pane === name;
+    pane.querySelectorAll("input").forEach((i) => (i.disabled = !active));
+  });
+}
 
 function showError(msg) {
   const e = el("vaultErr");
@@ -550,7 +606,7 @@ async function doSend() {
 }
 
 // Shared by "Create vault" and "Unlock" — same derivation, different wording.
-async function enter(btn, email, pass, { confirm } = {}) {
+async function enter(btn, email, pass, { confirm, remember = true } = {}) {
   showError("");
   if (!email) return showError("Your email address is needed");
   if (!pass) return showError("Your master password is needed");
@@ -563,7 +619,7 @@ async function enter(btn, email, pass, { confirm } = {}) {
   btn.disabled = true;
   btn.textContent = "Working…"; // PBKDF2 takes about a second, on purpose
   try {
-    await unlockVault(email, pass);
+    await unlockVault(email, pass, { remember });
     localStorage.setItem(EMAIL_KEY, email);
     ["vaultPass", "vaultPass2", "vaultPassU"].forEach((id) => el(id) && (el(id).value = ""));
     setPane("on");
@@ -620,17 +676,24 @@ export function wireVault() {
     setPane("out");
   });
 
-  const create = () => enter(el("vaultCreate"), el("vaultEmail2").value.trim(), el("vaultPass").value, { confirm: el("vaultPass2").value });
+  const create = () =>
+    enter(el("vaultCreate"), el("vaultEmail2").value.trim(), el("vaultPass").value, {
+      confirm: el("vaultPass2").value,
+      remember: el("vaultRemember").checked,
+    });
   el("vaultCreate").addEventListener("click", create);
   el("vaultPass2").addEventListener("keydown", (e) => e.key === "Enter" && create());
 
-  const unlock = () => enter(el("vaultUnlock"), el("vaultEmail3").value.trim(), el("vaultPassU").value);
+  const unlock = () =>
+    enter(el("vaultUnlock"), el("vaultEmail3").value.trim(), el("vaultPassU").value, {
+      remember: el("vaultRememberU").checked,
+    });
   el("vaultUnlock").addEventListener("click", unlock);
   el("vaultPassU").addEventListener("keydown", (e) => e.key === "Enter" && unlock());
 
-  // Drops the derived key without ending the session — useful on a shared machine.
-  el("vaultLock").addEventListener("click", () => {
-    lockVault();
+  // Drops the derived key and forgets it on this device, without ending the session.
+  el("vaultLock").addEventListener("click", async () => {
+    await lockVault();
     setPane("locked");
     el("vaultEmail3").value = knownEmail();
     renderVault();
@@ -659,10 +722,19 @@ export async function bootVault() {
   }
 
   if (!(await refreshSession())) {
+    // No session, so any key kept here is useless — don't leave it lying around.
+    await idbDel(KEY_STORE).catch(() => {});
     renderVault();
     return;
   }
+
+  // A key kept from last visit means no password prompt at all.
+  const restored = await restoreKey();
   renderVault();
+  if (restored) {
+    onSync(); // the pull may have brought in links or documents from elsewhere
+    return;
+  }
 
   // Arriving fresh from a magic link, open the dialog rather than making the
   // user hunt for where to type the password they were just told about.

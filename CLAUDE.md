@@ -109,8 +109,20 @@ highlight code → rewrite external links to `target="_blank"`.
 revoked), `markread:shares:removed` (revocation tombstones, so a sync can't resurrect a deleted
 share), `markread:vault:email` (to prefill the unlock form), and `markread:vault:docs` +
 `markread:vault:docs:removed` (the document *index* only — never document bodies). None of this
-leaves the device except as ciphertext in the vault. **The derived vault key is never
-persisted** — it lives in a module-level variable in `vault.js`, so closing the tab re-locks.
+leaves the device except as ciphertext in the vault.
+
+**The derived vault key** lives in a module-level variable in `vault.js` and, unless the user
+unticks "Stay unlocked on this device", is also kept in IndexedDB under `vaultKey`. That is
+only acceptable because `deriveVaultKey` creates it **non-extractable** — structured clone
+keeps it usable while `exportKey` throws `InvalidAccessError`, so neither we nor injected
+script can read the bytes. **Never make that key extractable**, and never persist the master
+password itself. `lockVault()` and `signOut()` both `idbDel` it, as does boot when no session
+survives.
+
+⚠️ Inactive `.vault__pane` elements stay in the DOM (display:none), so `setPane()` **disables
+their inputs**. Without that, hidden password fields make password managers attach their
+inline menu and then disable themselves page-wide when the field vanishes — Bitwarden shows
+"This page is interfering…". Keep any new credential field inside a pane.
 
 ⚠️ `openSample()` in `sample.js` sets `state.current` directly instead of going through
 `openDoc()`, so anything that must react to "the current document changed" needs calling from

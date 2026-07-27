@@ -426,7 +426,7 @@
         <p class="vault__note">Your documents are never uploaded. This syncs the list of links you've created, nothing else.</p>
         <label class="vault__label" for="vaultEmail">Email address</label>
         <div class="vault__row">
-          <input type="email" id="vaultEmail" placeholder="you@example.com" autocomplete="email" spellcheck="false" />
+          <input type="email" id="vaultEmail" name="email" placeholder="you@example.com" autocomplete="email" spellcheck="false" />
           <button class="btn btn--primary btn--tiny" id="vaultSend">Send link</button>
         </div>
         <p class="vault__note">We'll email you a sign-in link. No password to remember for this part.</p>
@@ -449,17 +449,21 @@
         </p>
         <label class="vault__label" for="vaultEmail2">Email address</label>
         <div class="vault__row">
-          <input type="email" id="vaultEmail2" placeholder="you@example.com" autocomplete="email" spellcheck="false" />
+          <input type="email" id="vaultEmail2" name="email" placeholder="you@example.com" autocomplete="email" spellcheck="false" />
         </div>
         <label class="vault__label" for="vaultPass">Master password</label>
         <div class="vault__row">
-          <input type="password" id="vaultPass" placeholder="At least 10 characters" autocomplete="new-password" />
+          <input type="password" id="vaultPass" name="new-password" placeholder="At least 10 characters" autocomplete="new-password" />
         </div>
         <label class="vault__label" for="vaultPass2">Confirm master password</label>
         <div class="vault__row">
-          <input type="password" id="vaultPass2" placeholder="Type it again" autocomplete="new-password" />
+          <input type="password" id="vaultPass2" name="new-password" placeholder="Type it again" autocomplete="new-password" />
           <button class="btn btn--primary btn--tiny" id="vaultCreate">Create vault</button>
         </div>
+        <label class="vault__check">
+          <input type="checkbox" id="vaultRemember" checked />
+          <span>Stay unlocked on this device<em>Anyone who can use this browser profile can then open your vault.</em></span>
+        </label>
         <p class="vault__warn">
           <strong>There is no reset.</strong> mdread never receives this password and holds no copy of the key.
           Forget it and the vault cannot be recovered by you, by us, or by anyone. Save it in a password manager now.
@@ -472,13 +476,17 @@
         <p class="vault__note">It decrypts your saved links in this browser. mdread never sees it.</p>
         <label class="vault__label" for="vaultEmail3">Email address</label>
         <div class="vault__row">
-          <input type="email" id="vaultEmail3" placeholder="you@example.com" autocomplete="email" spellcheck="false" />
+          <input type="email" id="vaultEmail3" name="email" placeholder="you@example.com" autocomplete="email" spellcheck="false" />
         </div>
         <label class="vault__label" for="vaultPassU">Master password</label>
         <div class="vault__row">
-          <input type="password" id="vaultPassU" placeholder="Master password" autocomplete="current-password" />
+          <input type="password" id="vaultPassU" name="password" placeholder="Master password" autocomplete="current-password" />
           <button class="btn btn--primary btn--tiny" id="vaultUnlock">Unlock</button>
         </div>
+        <label class="vault__check">
+          <input type="checkbox" id="vaultRememberU" checked />
+          <span>Stay unlocked on this device<em>Anyone who can use this browser profile can then open your vault.</em></span>
+        </label>
         <p class="vault__note">Forgotten it? Nothing can decrypt this vault without it — you'd need to sign out and start a new one.</p>
       </div>
 

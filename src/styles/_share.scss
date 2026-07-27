@@ -350,6 +350,20 @@ html[data-theme="night"] .vrow.is-current .vrow__meta { color: #1a1610; }
 }
 .vault__row input:focus { outline: none; border-color: var(--accent); }
 
+.vault__check {
+  display: grid; grid-template-columns: auto 1fr; gap: 0 .55rem;
+  margin-top: .8rem; padding: .5rem .6rem;
+  border-radius: 8px; cursor: pointer;
+  transition: .14s var(--ease);
+}
+.vault__check:hover { background: var(--paper-2); }
+.vault__check input { accent-color: var(--accent); margin-top: .2rem; }
+.vault__check span { font-family: var(--sans); font-size: .78rem; color: var(--ink); }
+.vault__check em {
+  display: block; margin-top: .1rem;
+  font-style: normal; font-size: .72rem; line-height: 1.45; color: var(--ink-faint);
+}
+
 .vault__stat {
   display: flex; align-items: baseline; gap: .5rem;
   padding: .6rem .7rem; border-radius: 9px;
