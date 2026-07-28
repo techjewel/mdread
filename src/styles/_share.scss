@@ -321,24 +321,27 @@ html[data-theme="night"] .vtab.is-on .vtab__n { color: #1a1610; }
 .vcard__del:hover { color: var(--accent); border-color: var(--accent-soft); }
 .vcard__del:disabled { opacity: .4; pointer-events: none; }
 
-/* ---------- sidebar account entry ----------
-   Persistent, so sync is discoverable without opening a document first.
-   data-acct is out | locked | on. */
-.foot-acct {
-  display: flex; align-items: center; gap: .45rem; width: 100%;
-  padding: .45rem .5rem; margin-bottom: .4rem;
-  border-radius: 8px; color: var(--ink-soft);
-  font-family: var(--ui); font-size: .72rem; text-align: left;
-  transition: .16s var(--ease);
+/* ---------- account controls, at the foot of the vault ---------- */
+.vfoot {
+  display: flex; align-items: center; gap: .45rem;
+  margin-top: 1.1rem; padding-top: .9rem;
+  border-top: 1px solid var(--line);
 }
-.foot-acct:hover { background: var(--paper-2); color: var(--ink); }
-.foot-acct__label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.foot-acct__dot {
-  width: 6px; height: 6px; border-radius: 50%; flex: none;
-  background: var(--line-2);
+.vfoot__who {
+  flex: 1; min-width: 0;
+  font-family: var(--ui); font-size: .69rem; color: var(--ink-faint);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.foot-acct[data-acct="locked"] .foot-acct__dot { background: var(--accent); }
-.foot-acct[data-acct="on"] .foot-acct__dot { background: #5e8f4f; }
+.vfoot__who strong { color: var(--ink-soft); font-weight: 400; }
+
+/* a way into the links tab from the sidebar list */
+.vaultbox__links {
+  width: 100%; text-align: left; margin-top: .15rem;
+  padding: .35rem .5rem; border-radius: 8px;
+  font-family: var(--ui); font-size: .68rem; color: var(--ink-soft);
+  transition: .14s var(--ease);
+}
+.vaultbox__links:hover { background: var(--paper-2); color: var(--accent); }
 
 /* ---------- share dialog's one-line sync summary ---------- */
 .share__sync {

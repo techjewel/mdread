@@ -379,13 +379,9 @@ function showError(msg) {
 /* The sidebar entry and the share dialog's one-line summary both mirror vault
    state, so neither becomes the only place sync is visible. */
 export function renderVault() {
-  const btn = el("accountBtn");
-  if (!btn) return;
+  if (!el("vault")) return;
 
   const mode = vaultState.unlocked ? "on" : vaultState.signedIn ? "locked" : "out";
-  btn.dataset.acct = mode;
-  el("accountLabel").textContent =
-    mode === "on" ? (vaultState.syncing ? "Syncing…" : "Links synced") : mode === "locked" ? "Unlock your links" : "Sync your links";
 
   const line = el("shareSyncText");
   if (line) {
@@ -398,15 +394,7 @@ export function renderVault() {
     el("shareSyncAct").textContent = mode === "on" ? "Manage" : mode === "locked" ? "Unlock" : "Set up sync";
   }
 
-  if (vaultState.unlocked) {
-    const d = readDocs().length;
-    const l = readShares().length;
-    const parts = [];
-    if (d) parts.push(`${d} document${d === 1 ? "" : "s"}`);
-    if (l) parts.push(`${l} share link${l === 1 ? "" : "s"}`);
-    el("vaultCount").textContent = parts.join(" · ") || "Empty for now";
-    el("vaultWho").textContent = vaultState.email;
-  }
+  if (vaultState.unlocked) el("vaultWho").textContent = vaultState.email;
   if (vaultState.lastError) showError(vaultState.lastError);
   renderVaultBox();
   if (el("vaultDlg")?.open) renderVaultGrid();
@@ -476,13 +464,15 @@ export function renderVaultBox() {
   if (!box) return;
 
   const docs = readDocs();
-  const mode = !vaultState.signedIn ? "out" : !vaultState.unlocked ? "locked" : docs.length ? "on" : "empty";
+  const links = readShares();
+  const total = docs.length + links.length;
+  // "on" once there's anything at all — links count as vault contents even
+  // before a document is saved.
+  const mode = !vaultState.signedIn ? "out" : !vaultState.unlocked ? "locked" : total ? "on" : "empty";
   box.dataset.state = mode;
 
-  el("vaultBoxCount").textContent = mode === "on" ? String(docs.length) : "";
-  // Links live in the vault too, so the way in must stay reachable even with no
-  // documents saved yet.
-  el("vaultShowAll").hidden = !vaultState.unlocked || !(docs.length || readShares().length);
+  el("vaultBoxCount").textContent = mode === "on" ? String(total) : "";
+  el("vaultShowAll").hidden = mode !== "on";
 
   /* The add button lives in the topbar, with the document it acts on, rather
      than tucked into the sidebar. It states which of the two things it will do. */
@@ -505,8 +495,19 @@ export function renderVaultBox() {
   }
 
   for (const d of docs.slice(0, SIDEBAR_MAX)) list.append(docRow(d, { wide: false }));
+
+  // Links are vault contents too, so give them a way in from here rather than
+  // leaving an empty list when someone has links but no saved documents.
+  if (links.length) {
+    const row = document.createElement("button");
+    row.className = "vaultbox__links";
+    row.textContent = `${links.length} share link${links.length === 1 ? "" : "s"}`;
+    row.addEventListener("click", () => openVaultDialog("links"));
+    list.append(row);
+  }
+
   more.hidden = docs.length <= SIDEBAR_MAX;
-  if (!more.hidden) more.textContent = `Show all ${docs.length}`;
+  if (!more.hidden) more.textContent = `Show all ${docs.length} documents`;
 }
 
 /* ---------------- the full vault ---------------- */
@@ -684,7 +685,7 @@ async function enter(btn, email, pass, { confirm, remember = true } = {}) {
     await unlockVault(email, pass, { remember });
     localStorage.setItem(EMAIL_KEY, email);
     ["vaultPass", "vaultPass2", "vaultPassU"].forEach((id) => el(id) && (el(id).value = ""));
-    setPane("on");
+    el("accountDlg").close(); // nothing left to ask — the vault is in the sidebar
     renderVault();
     onSync();
     toast(confirm !== undefined ? "Vault created ✓" : "Vault unlocked ✓");
@@ -696,12 +697,15 @@ async function enter(btn, email, pass, { confirm, remember = true } = {}) {
   }
 }
 
-// Chooses between setup and unlock, then shows the dialog.
+/* Chooses between setup and unlock, then shows the dialog. Once unlocked there
+   is nothing left to ask, so it hands off to the vault itself — which is where
+   the account controls now live. */
 async function openAccount() {
   showError("");
+  if (vaultState.unlocked) return openVaultDialog();
+
   const dlg = el("accountDlg");
-  if (vaultState.unlocked) setPane("on");
-  else if (!vaultState.signedIn) setPane("out");
+  if (!vaultState.signedIn) setPane("out");
   else {
     setPane((await vaultExists()) ? "locked" : "setup");
     const known = knownEmail();
@@ -720,7 +724,6 @@ export function wireVault() {
      disable themselves. setPane() otherwise only runs once a dialog is opened. */
   setPane(el("vault").dataset.vault || "out");
 
-  el("accountBtn").addEventListener("click", openAccount);
   el("vaultAddBtn").addEventListener("click", addCurrentToVault);
   el("vaultBoxSignIn").addEventListener("click", openAccount);
   el("vaultBoxUnlock").addEventListener("click", openAccount);
@@ -772,7 +775,7 @@ export function wireVault() {
   // Drops the derived key and forgets it on this device, without ending the session.
   el("vaultLock").addEventListener("click", async () => {
     await lockVault();
-    setPane("locked");
+    el("vaultDlg").close();
     el("vaultEmail3").value = knownEmail();
     renderVault();
     toast("Vault locked");
@@ -780,7 +783,7 @@ export function wireVault() {
 
   el("vaultOut").addEventListener("click", async () => {
     await signOut();
-    setPane("out");
+    el("vaultDlg").close();
     renderVault();
     toast("Signed out");
   });

@@ -108,13 +108,6 @@
           </button>
           <div class="recents__list" id="recentsList"></div>
         </div>
-        <!-- account entry. data-acct (out|locked|on) drives the label + dot. -->
-        <button class="foot-acct" id="accountBtn" data-acct="out" title="Account and link sync">
-          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" aria-hidden="true"><rect x="4" y="10.5" width="16" height="9.5" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" stroke="currentColor" stroke-width="1.5"/></svg>
-          <span class="foot-acct__label" id="accountLabel">Sync your links</span>
-          <span class="foot-acct__dot" aria-hidden="true"></span>
-        </button>
-
         <div class="foot-row">
           <div class="theme-switch" role="group" aria-label="Theme">
             <button data-theme-val="day" title="Day" aria-label="Day">☀</button>
@@ -415,6 +408,13 @@
 
     <div class="vgrid" id="vaultGrid"></div>
     <p class="vgrid__none" id="vaultNone" hidden>Nothing matches that.</p>
+
+    <!-- account controls belong with the thing they govern -->
+    <div class="vfoot">
+      <span class="vfoot__who">Signed in as <strong id="vaultWho"></strong></span>
+      <button class="btn btn--tiny" id="vaultLock">Lock now</button>
+      <button class="btn btn--tiny btn--danger" id="vaultOut">Sign out</button>
+    </div>
   </dialog>
 
   <!-- account dialog. data-vault (out|sent|setup|locked|on) picks the pane. -->
@@ -501,20 +501,6 @@
           <span>Stay unlocked on this device<em>Anyone who can use this browser profile can then open your vault.</em></span>
         </label>
         <p class="vault__note">Forgotten it? Nothing can decrypt this vault without it — you'd need to sign out and start a new one.</p>
-      </div>
-
-      <!-- ── unlocked ── -->
-      <div class="vault__pane" data-pane="on">
-        <p class="dlg__lede">Your vault is unlocked and syncing.</p>
-        <div class="vault__stat">
-          <span class="vault__stat-n" id="vaultCount">Empty</span>
-          <span class="vault__stat-e" id="vaultWho"></span>
-        </div>
-        <p class="vault__note">Everything here was encrypted in this browser before upload.</p>
-        <div class="vault__row vault__row--acts">
-          <button class="btn btn--tiny" id="vaultLock">Lock now</button>
-          <button class="btn btn--tiny btn--danger" id="vaultOut">Sign out</button>
-        </div>
       </div>
 
       <p class="vault__err" id="vaultErr" hidden></p>

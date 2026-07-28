@@ -71,7 +71,8 @@ All behaviour lives in `src/modules/*.js` — plain ES modules, one concern each
 - `crypto.js` — AES-GCM, gzip, and PBKDF2 primitives, pure bytes-in/bytes-out
 - `share.js` — bundle format, the share dialog, and `bootShare()` (the shared-link viewer)
 - `vault.js` — sign-in, master-password unlock, share-list sync, and vault documents
-  (`data-vault` panes in the account dialog, `data-state` on the sidebar vault panel)
+  (`data-vault` panes in the account dialog, `data-state` on the sidebar vault panel;
+  account controls live in the vault dialog footer, not the sidebar)
 - `recents.js`, `sample.js`, `keyboard.js`
 
 The modules form import **cycles** (e.g. `tree` ↔ `document`, `files` ↔ `recents`). This is
