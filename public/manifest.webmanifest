@@ -15,8 +15,7 @@
     {
       "action": "./",
       "accept": {
-        "text/markdown": [".md", ".markdown", ".mdown", ".mkd", ".mkdn", ".mdwn", ".mdx"],
-        "text/plain": [".txt"]
+        "text/markdown": [".md", ".markdown", ".mdown", ".mkd", ".mkdn", ".mdwn", ".mdx"]
       }
     }
   ]

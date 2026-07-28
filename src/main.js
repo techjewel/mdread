@@ -166,10 +166,6 @@ async function init() {
   // master password is entered anyway.
   bootVault().catch(() => {});
 
-  // OS file-handler: if the app was launched to open a file, consume it now
-  // (before the recent-folder restore, so an explicitly opened file wins).
-  wireLaunch();
-
   if (!supportsFSA) {
     hint(
       "Your browser can't save to disk directly — files open read-only and edits download. (Chrome/Edge support live editing.)"
@@ -186,6 +182,12 @@ async function init() {
       await setRoot(h);
     }
   } catch {}
+
+  // OS file-handler, wired last on purpose. setRoot() above calls addFiles with
+  // replace=true and then opens lastDoc, so a launch consumed any earlier gets
+  // wiped from the tree and scrolled past. Claiming the queue after the restore
+  // means the launched file appends to the library and wins the final openDoc.
+  wireLaunch();
 
   // The service worker is registered automatically by vite-plugin-pwa (offline shell).
 }
