@@ -652,6 +652,12 @@ export function wireVault() {
   if (!el("vault")) return;
   const dlg = el("accountDlg");
 
+  /* Normalise the markup's starting state immediately. Without this, a plain
+     page load leaves every pane's inputs enabled — including password fields in
+     panes nobody has opened — which is precisely what makes password managers
+     disable themselves. setPane() otherwise only runs once a dialog is opened. */
+  setPane(el("vault").dataset.vault || "out");
+
   el("accountBtn").addEventListener("click", openAccount);
   el("vaultAddBtn").addEventListener("click", addCurrentToVault);
   el("vaultBoxSignIn").addEventListener("click", openAccount);
