@@ -10,6 +10,7 @@ import { renderTree, refreshTreeState, updateCurrentFolder } from "./tree.js";
 import { savePos, updateProgress } from "./scroll.js";
 import { setMode } from "./view.js";
 import { toast } from "./ui.js";
+import { renderVaultBox } from "./vault.js";
 
 export async function openDoc(file) {
   if (!file) return;
@@ -37,6 +38,7 @@ export async function openDoc(file) {
   editor.value = file.content;
   refreshTreeState();
   updateCurrentFolder();
+  renderVaultBox(); // the "+" reflects whether *this* document is stored
 
   // restore reading position
   requestAnimationFrame(() => {
@@ -79,6 +81,7 @@ export function newDoc(content = "") {
   renderMarkdown(content);
   updateSub();
   refreshTreeState();
+  renderVaultBox();
   setMode("split");
   editor.focus();
   editor.setSelectionRange(content.length, content.length);
