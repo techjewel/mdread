@@ -93,7 +93,6 @@ html[data-dropcap="on"] .reading > p:first-of-type::first-letter {
 }
 /* code blocks */
 .reading pre {
-  position: relative;
   margin: 1.4em 0; padding: 1.05rem 1.2rem; overflow-x: auto;
   background: var(--c-bg); border: 1px solid var(--line);
   border-radius: var(--radius); box-shadow: var(--shadow);
@@ -101,24 +100,30 @@ html[data-dropcap="on"] .reading > p:first-of-type::first-letter {
 }
 .reading pre code { font-family: var(--mono); color: var(--ink); background: none; padding: 0; border: none; }
 
-/* copy-icon (top-right of each code block) — bare icon, no chrome, always shown */
-.reading pre .copy-btn {
+/* copy-icon (top-right of each code block), always shown.
+   Anchored to .code-wrap, never to the <pre>: the <pre> scrolls horizontally,
+   and an absolutely positioned child of a scroll container scrolls away with the
+   content. The wrapper stays put, so the icon holds its corner on wide blocks. */
+.reading .code-wrap { position: relative; }
+.reading .code-wrap > .copy-btn {
   position: absolute; top: .55rem; right: .6rem;
-  display: grid; padding: 0; border: none; background: none; cursor: pointer;
+  display: grid; padding: .25rem; border: none; cursor: pointer;
   color: var(--ink-soft);
+  /* opaque so long first lines slide under it instead of through it */
+  background: var(--c-bg); border-radius: 5px;
   transition: color .14s var(--ease);
 }
-.reading pre .copy-btn:hover { color: var(--accent); }
-.reading pre .copy-btn.is-copied { color: var(--accent); }
+.reading .code-wrap > .copy-btn:hover { color: var(--accent); }
+.reading .code-wrap > .copy-btn.is-copied { color: var(--accent); }
 
 /* both icons share one grid cell and crossfade on copy */
-.reading pre .copy-btn .ic {
+.reading .code-wrap > .copy-btn .ic {
   grid-area: 1 / 1; display: block;
   transition: opacity .2s var(--ease), transform .2s var(--ease);
 }
-.reading pre .copy-btn .ic-check { opacity: 0; transform: scale(.6); }
-.reading pre .copy-btn.is-copied .ic-copy { opacity: 0; transform: scale(.6); }
-.reading pre .copy-btn.is-copied .ic-check { opacity: 1; transform: none; }
+.reading .code-wrap > .copy-btn .ic-check { opacity: 0; transform: scale(.6); }
+.reading .code-wrap > .copy-btn.is-copied .ic-copy { opacity: 0; transform: scale(.6); }
+.reading .code-wrap > .copy-btn.is-copied .ic-check { opacity: 1; transform: none; }
 
 /* tables */
 .reading table { width: 100%; border-collapse: collapse; margin: 1.5em 0; font-size: .92em; }

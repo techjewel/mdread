@@ -64,12 +64,22 @@ export function renderMarkdown(md) {
 const COPY_ICON = `<svg class="ic ic-copy" viewBox="0 0 24 24" width="15" height="15" fill="none" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M5 15V5a2 2 0 0 1 2-2h8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 const CHECK_ICON = `<svg class="ic ic-check" viewBox="0 0 24 24" width="15" height="15" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
-// Append a copy-icon button to a code block's <pre>. Clicking copies the raw
-// text; toggling `.is-copied` crossfades the icon to a checkmark (the tooltip
-// confirms, or reports failure) before resetting.
+// Give a code block a copy button. Clicking copies the raw text; toggling
+// `.is-copied` crossfades the icon to a checkmark (the tooltip confirms, or
+// reports failure) before resetting.
+//
+// The button hangs off a wrapper rather than the <pre> itself. The <pre> is the
+// `overflow-x: auto` scroll container, and an absolutely positioned child of a
+// scroll container is part of its scrollable area — on a code block wide enough
+// to scroll, the button slides out of view with the code. The wrapper doesn't
+// scroll, so the button stays pinned.
 function addCopyButton(block) {
   const pre = block.parentElement;
-  if (!pre || pre.querySelector(".copy-btn")) return;
+  if (!pre || pre.parentElement?.classList.contains("code-wrap")) return;
+  const wrap = document.createElement("div");
+  wrap.className = "code-wrap";
+  pre.replaceWith(wrap);
+  wrap.appendChild(pre);
   const btn = document.createElement("button");
   btn.type = "button";
   btn.className = "copy-btn";
@@ -87,7 +97,7 @@ function addCopyButton(block) {
       btn.title = "Copy";
     }, 1500);
   });
-  pre.appendChild(btn);
+  wrap.appendChild(btn);
 }
 
 function buildToc(items) {
