@@ -124,9 +124,12 @@
 
 /* ---------- sidebar vault ----------
    data-state is out | locked | empty | on; only the matching child shows. */
+/* No border-top here: .vaultbox is always the first child of .sidebar__foot,
+   which already draws one. Its own rule stacked a second, inset line .6rem
+   below the first (the foot's padding), reading as a double rule. Same reason
+   there's no top padding — the foot's .6rem already provides it. */
 .vaultbox {
-  border-top: 1px solid var(--line);
-  padding: .6rem 0 .5rem;
+  padding: 0 0 .5rem;
   margin-bottom: .2rem;
 }
 .vaultbox__head {
