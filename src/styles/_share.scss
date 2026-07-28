@@ -1,0 +1,496 @@
+/* ================= Sharing =================
+   The share dialog, the banner shown when the app booted from a share link,
+   and the failure screen for links that expired or arrived truncated.
+
+   Visibility is driven by data-shared on #app ("loading" | "on" | "error"),
+   set by share.js — no layout classes are toggled from JS. */
+
+/* ---------- dialog ---------- */
+.dlg {
+  width: min(30rem, calc(100vw - 2rem));
+  max-height: calc(100vh - 4rem);
+  overflow-y: auto;
+  padding: 1.5rem 1.6rem 1.6rem;
+  border: 1px solid var(--line-2);
+  border-radius: 16px;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+}
+.dlg::backdrop {
+  background: color-mix(in srgb, var(--paper) 62%, transparent);
+  backdrop-filter: blur(5px);
+}
+.dlg[open] { animation: pop .18s var(--ease) both; }
+
+.dlg__x {
+  position: absolute; top: .85rem; right: .9rem;
+  display: grid; place-items: center;
+  width: 1.9rem; height: 1.9rem; border-radius: 8px;
+  color: var(--ink-faint); transition: .16s var(--ease);
+}
+.dlg__x:hover { color: var(--accent); background: var(--paper-2); }
+
+.dlg__title {
+  font-family: var(--display); font-size: 1.3rem; font-weight: 600;
+  letter-spacing: -.01em; margin: 0 2rem .4rem 0;
+}
+.dlg__lede {
+  font-family: var(--sans); font-size: .82rem; line-height: 1.55;
+  color: var(--ink-soft); margin: 0 0 1.2rem;
+}
+.dlg__lede strong { color: var(--ink); font-weight: 600; }
+
+/* ---------- dialog groups ---------- */
+.share__group { border: 0; padding: 0; margin: 0 0 1.1rem; }
+.share__legend {
+  font-family: var(--ui); font-size: .68rem; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--ink-faint);
+  padding: 0; margin-bottom: .5rem;
+}
+
+.share__opt {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0 .6rem;
+  padding: .6rem .7rem;
+  border: 1px solid transparent; border-radius: 10px;
+  cursor: pointer; transition: .14s var(--ease);
+}
+.share__opt:hover { background: var(--paper-2); }
+.share__opt:has(input:checked) { border-color: var(--accent-soft); background: var(--paper-2); }
+.share__opt input { accent-color: var(--accent); margin-top: .15rem; }
+
+.share__opt-t { font-family: var(--sans); font-size: .84rem; color: var(--ink); }
+.share__opt-t em { font-style: normal; color: var(--ink-faint); }
+.share__opt-d {
+  grid-column: 2;
+  font-family: var(--sans); font-size: .74rem; line-height: 1.45;
+  color: var(--ink-soft); margin-top: .15rem;
+}
+
+.share__inline-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 1rem; margin-bottom: 1.1rem;
+}
+.share__inline-row label {
+  font-family: var(--ui); font-size: .72rem; color: var(--ink-soft);
+}
+.share__inline-row select {
+  font-family: var(--ui); font-size: .76rem; color: var(--ink);
+  padding: .4rem .6rem; border-radius: 8px;
+  border: 1px solid var(--line-2); background: var(--paper);
+}
+
+.share__err {
+  font-family: var(--sans); font-size: .78rem; line-height: 1.45;
+  color: var(--accent); background: var(--paper-2);
+  border: 1px solid var(--accent-soft); border-radius: 9px;
+  padding: .55rem .7rem; margin: 0 0 .8rem;
+}
+
+/* ---------- result ---------- */
+.share__result { margin-top: 1rem; animation: rise .2s var(--ease) both; }
+.share__url-row { display: flex; gap: .45rem; }
+.share__url {
+  flex: 1; min-width: 0;
+  font-family: var(--mono); font-size: .72rem; color: var(--ink);
+  padding: .55rem .7rem; border-radius: 9px;
+  border: 1px solid var(--line-2); background: var(--paper);
+}
+.share__note {
+  font-family: var(--sans); font-size: .73rem; line-height: 1.5;
+  color: var(--ink-soft); margin: .6rem 0 0;
+}
+
+/* ---------- your links ---------- */
+.share__list-wrap { margin-top: 1.4rem; border-top: 1px solid var(--line); padding-top: 1rem; }
+.share__list-head {
+  font-family: var(--ui); font-size: .68rem; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--ink-faint); margin-bottom: .55rem;
+}
+.share__list { display: flex; flex-direction: column; gap: .3rem; }
+.share__row {
+  display: flex; align-items: center; gap: .45rem;
+  padding: .45rem .55rem; border-radius: 9px;
+}
+.share__row:hover { background: var(--paper-2); }
+.share__row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.share__row-name {
+  font-family: var(--sans); font-size: .8rem; color: var(--ink);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.share__row-meta { font-family: var(--ui); font-size: .67rem; color: var(--ink-faint); }
+
+/* ---------- sidebar vault ----------
+   data-state is out | locked | empty | on; only the matching child shows. */
+.vaultbox {
+  border-top: 1px solid var(--line);
+  padding: .6rem 0 .5rem;
+  margin-bottom: .2rem;
+}
+.vaultbox__head {
+  display: flex; align-items: center; gap: .4rem;
+  padding: 0 .5rem .4rem;
+  font-family: var(--ui); font-size: .68rem; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--ink-faint);
+}
+.vaultbox__title { flex: none; }
+.vaultbox__count {
+  flex: 1;
+  font-size: .66rem; letter-spacing: .02em; color: var(--ink-faint);
+}
+.vaultbox__all {
+  flex: none; padding: .1rem .3rem; border-radius: 5px;
+  font-family: var(--ui); font-size: .64rem; letter-spacing: .04em;
+  text-transform: uppercase; color: var(--accent);
+  transition: .14s var(--ease);
+}
+.vaultbox__all:hover { background: var(--paper-2); }
+.vaultbox__more {
+  width: 100%; text-align: left; margin-top: .15rem;
+  padding: .35rem .5rem; border-radius: 8px;
+  font-family: var(--ui); font-size: .68rem; color: var(--accent);
+  transition: .14s var(--ease);
+}
+.vaultbox__more:hover { background: var(--paper-2); }
+
+/* ---------- "Add to vault", in the topbar with the document it acts on ---------- */
+.vault-add {
+  display: inline-flex; align-items: center; gap: .3rem;
+  padding: .3rem .6rem; border-radius: 8px;
+  border: 1px solid var(--line-2); background: var(--paper);
+  font-family: var(--ui); font-size: .72rem; color: var(--ink-soft);
+  white-space: nowrap; transition: .16s var(--ease);
+}
+.vault-add:hover { border-color: var(--accent); color: var(--accent); }
+.vault-add:disabled { opacity: .5; pointer-events: none; }
+.vault-add__tick { display: none; }
+.vault-add.is-saved {
+  border-color: var(--accent-soft); background: var(--paper-2); color: var(--accent);
+}
+.vault-add.is-saved .vault-add__plus { display: none; }
+.vault-add.is-saved .vault-add__tick { display: block; }
+
+/* only the child matching data-state is shown */
+.vaultbox > [data-vs] { display: none; }
+.vaultbox[data-state="out"]    > [data-vs="out"],
+.vaultbox[data-state="locked"] > [data-vs="locked"],
+.vaultbox[data-state="empty"]  > [data-vs="empty"],
+.vaultbox[data-state="on"]     > [data-vs="on"] { display: block; }
+
+.vaultbox__cta {
+  width: 100%; text-align: left;
+  padding: .45rem .5rem; border-radius: 8px;
+  font-family: var(--sans); font-size: .73rem; line-height: 1.4;
+  color: var(--ink-soft); transition: .14s var(--ease);
+}
+.vaultbox__cta:hover { background: var(--paper-2); color: var(--accent); }
+.vaultbox__empty {
+  margin: 0; padding: .3rem .5rem .1rem;
+  font-family: var(--sans); font-size: .72rem; line-height: 1.45; color: var(--ink-faint);
+}
+.vaultbox__empty strong { color: var(--ink-soft); }
+
+.vaultbox__list { max-height: 12rem; overflow-y: auto; }
+
+.vrow {
+  display: flex; align-items: center; gap: .2rem;
+  border-radius: 8px; transition: .14s var(--ease);
+}
+.vrow:hover { background: var(--paper-2); }
+.vrow.is-current { background: var(--accent); }
+.vrow.is-current .vrow__name,
+.vrow.is-current .vrow__meta { color: var(--paper); }
+html[data-theme="night"] .vrow.is-current .vrow__name,
+html[data-theme="night"] .vrow.is-current .vrow__meta { color: #1a1610; }
+
+.vrow__open {
+  flex: 1; min-width: 0; text-align: left;
+  display: flex; flex-direction: column; gap: 1px;
+  padding: .35rem .5rem;
+}
+.vrow__name {
+  font-family: var(--sans); font-size: .78rem; color: var(--ink);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.vrow__meta { font-family: var(--ui); font-size: .63rem; color: var(--ink-faint); }
+.vrow__del {
+  flex: none; display: grid; place-items: center;
+  width: 1.3rem; height: 1.3rem; margin-right: .25rem;
+  border-radius: 5px; color: var(--ink-faint); opacity: 0;
+  transition: .14s var(--ease);
+}
+.vrow:hover .vrow__del { opacity: 1; }
+.vrow__del:hover { color: var(--accent); background: var(--paper); }
+.vrow.is-current .vrow__del { color: var(--paper); opacity: .75; }
+
+/* ---------- the full vault, in a roomy dialog ---------- */
+.dlg--wide { width: min(46rem, calc(100vw - 2rem)); }
+
+.vtabs {
+  display: flex; gap: .2rem;
+  margin: 1.1rem 0 0; padding-bottom: .5rem;
+  border-bottom: 1px solid var(--line);
+}
+.vtab {
+  display: inline-flex; align-items: center; gap: .35rem;
+  padding: .35rem .7rem; border-radius: 8px;
+  font-family: var(--ui); font-size: .74rem; color: var(--ink-faint);
+  transition: .14s var(--ease);
+}
+.vtab:hover { color: var(--ink); background: var(--paper-2); }
+.vtab.is-on { color: var(--ink); background: var(--paper-2); }
+.vtab__n {
+  min-width: 1.1rem; padding: 0 .25rem; border-radius: 99px;
+  font-size: .64rem; text-align: center;
+  background: var(--line); color: var(--ink-soft);
+}
+.vtab__n:empty { display: none; }
+.vtab.is-on .vtab__n { background: var(--accent); color: var(--paper); }
+html[data-theme="night"] .vtab.is-on .vtab__n { color: #1a1610; }
+
+.vgrid__bar {
+  display: flex; align-items: center; gap: .7rem;
+  margin: 1.1rem 0 .8rem;
+}
+.vgrid__search {
+  flex: 1; display: flex; align-items: center; gap: .45rem;
+  padding: .45rem .65rem; border-radius: 9px;
+  border: 1px solid var(--line-2); background: var(--paper);
+  color: var(--ink-faint);
+}
+.vgrid__search:focus-within { border-color: var(--accent); }
+.vgrid__search input {
+  flex: 1; min-width: 0; border: 0; background: none; outline: none;
+  font-family: var(--sans); font-size: .82rem; color: var(--ink);
+}
+.vgrid__stat {
+  flex: none; font-family: var(--ui); font-size: .68rem; color: var(--ink-faint);
+}
+
+.vgrid {
+  display: flex; flex-direction: column; gap: .3rem;
+  max-height: min(26rem, 55vh); overflow-y: auto;
+  margin: 0 -.35rem; padding: 0 .35rem;
+}
+.vgrid__none {
+  font-family: var(--sans); font-size: .82rem; color: var(--ink-faint);
+  text-align: center; padding: 2rem 0; margin: 0;
+}
+
+.vcard {
+  display: flex; align-items: center; gap: .6rem;
+  padding: .1rem; border-radius: 10px;
+  border: 1px solid var(--line); background: var(--paper);
+  transition: .14s var(--ease);
+}
+.vcard:hover { border-color: var(--accent-soft); background: var(--paper-2); }
+.vcard.is-current { border-color: var(--accent); }
+.vcard__open {
+  flex: 1; min-width: 0; text-align: left;
+  display: flex; flex-direction: column; gap: 2px;
+  padding: .55rem .65rem;
+}
+.vcard__name {
+  font-family: var(--sans); font-size: .9rem; color: var(--ink);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.vcard__meta {
+  font-family: var(--ui); font-size: .67rem; color: var(--ink-faint);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+/* A link row has nothing to open, so it isn't a button. */
+.vcard__open--static { cursor: default; }
+
+.vcard__act {
+  flex: none; padding: .3rem .6rem; border-radius: 7px;
+  border: 1px solid var(--line-2);
+  font-family: var(--ui); font-size: .68rem; color: var(--ink-soft);
+  transition: .14s var(--ease);
+}
+.vcard__act:hover { border-color: var(--accent); color: var(--accent); }
+
+.vcard__del {
+  flex: none; margin-right: .5rem; padding: .3rem .6rem;
+  border-radius: 7px; border: 1px solid transparent;
+  font-family: var(--ui); font-size: .68rem; color: var(--ink-faint);
+  opacity: 0; transition: .14s var(--ease);
+}
+.vcard:hover .vcard__del { opacity: 1; }
+.vcard__del:hover { color: var(--accent); border-color: var(--accent-soft); }
+.vcard__del:disabled { opacity: .4; pointer-events: none; }
+
+/* ---------- account controls, at the foot of the vault ---------- */
+.vfoot {
+  display: flex; align-items: center; gap: .45rem;
+  margin-top: 1.1rem; padding-top: .9rem;
+  border-top: 1px solid var(--line);
+}
+.vfoot__who {
+  flex: 1; min-width: 0;
+  font-family: var(--ui); font-size: .69rem; color: var(--ink-faint);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.vfoot__who strong { color: var(--ink-soft); font-weight: 400; }
+
+/* a way into the links tab from the sidebar list */
+.vaultbox__links {
+  width: 100%; text-align: left; margin-top: .15rem;
+  padding: .35rem .5rem; border-radius: 8px;
+  font-family: var(--ui); font-size: .68rem; color: var(--ink-soft);
+  transition: .14s var(--ease);
+}
+.vaultbox__links:hover { background: var(--paper-2); color: var(--accent); }
+
+/* ---------- share dialog's one-line sync summary ---------- */
+.share__sync {
+  display: flex; align-items: center; gap: .45rem; width: 100%;
+  margin-top: 1.2rem; padding: .55rem .6rem;
+  border-radius: 9px; border: 1px solid var(--line);
+  background: var(--paper-2); color: var(--ink-soft);
+  font-family: var(--ui); font-size: .7rem; text-align: left;
+  transition: .16s var(--ease);
+}
+.share__sync:hover { border-color: var(--accent); color: var(--ink); }
+.share__sync span:not(.share__sync-act) { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.share__sync-act { color: var(--accent); flex: none; }
+
+/* ---------- account dialog ----------
+   data-vault on #vault is out | sent | setup | locked | on. */
+.vault__pane { display: none; }
+.vault[data-vault="out"]    .vault__pane[data-pane="out"],
+.vault[data-vault="sent"]   .vault__pane[data-pane="sent"],
+.vault[data-vault="setup"]  .vault__pane[data-pane="setup"],
+.vault[data-vault="locked"] .vault__pane[data-pane="locked"],
+.vault[data-vault="on"]     .vault__pane[data-pane="on"] { display: block; }
+
+.vault__label {
+  display: block; margin: .7rem 0 .3rem;
+  font-family: var(--ui); font-size: .67rem; letter-spacing: .05em;
+  text-transform: uppercase; color: var(--ink-faint);
+}
+.vault__note {
+  font-family: var(--sans); font-size: .73rem; line-height: 1.5;
+  color: var(--ink-soft); margin: .4rem 0 0;
+}
+.vault__note strong { color: var(--ink); }
+
+.vault__row { display: flex; gap: .4rem; }
+.vault__row--acts { margin-top: .9rem; }
+.vault__row input {
+  flex: 1; min-width: 0;
+  font-family: var(--sans); font-size: .82rem; color: var(--ink);
+  padding: .5rem .65rem; border-radius: 8px;
+  border: 1px solid var(--line-2); background: var(--paper);
+}
+.vault__row input:focus { outline: none; border-color: var(--accent); }
+
+.vault__check {
+  display: grid; grid-template-columns: auto 1fr; gap: 0 .55rem;
+  margin-top: .8rem; padding: .5rem .6rem;
+  border-radius: 8px; cursor: pointer;
+  transition: .14s var(--ease);
+}
+.vault__check:hover { background: var(--paper-2); }
+.vault__check input { accent-color: var(--accent); margin-top: .2rem; }
+.vault__check span { font-family: var(--sans); font-size: .78rem; color: var(--ink); }
+.vault__check em {
+  display: block; margin-top: .1rem;
+  font-style: normal; font-size: .72rem; line-height: 1.45; color: var(--ink-faint);
+}
+
+.vault__stat {
+  display: flex; align-items: baseline; gap: .5rem;
+  padding: .6rem .7rem; border-radius: 9px;
+  background: var(--paper-2); border: 1px solid var(--line);
+}
+.vault__stat-n { font-family: var(--sans); font-size: .95rem; font-weight: 600; color: var(--ink); }
+.vault__stat-e { font-family: var(--ui); font-size: .7rem; color: var(--ink-faint); min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+
+/* The one consequence people must not miss. */
+.vault__warn {
+  font-family: var(--sans); font-size: .74rem; line-height: 1.55;
+  color: var(--ink-soft); margin: .9rem 0 0;
+  padding: .6rem .7rem; border-radius: 8px;
+  background: var(--paper-2); border: 1px solid var(--accent-soft);
+}
+.vault__warn strong { color: var(--accent); }
+
+.vault__err {
+  font-family: var(--sans); font-size: .76rem; line-height: 1.45;
+  color: var(--accent); margin: .8rem 0 0;
+  padding: .5rem .65rem; border-radius: 8px;
+  background: var(--paper-2); border: 1px solid var(--accent-soft);
+}
+
+/* ---------- button modifiers used by the dialog ---------- */
+.btn--wide { width: 100%; }
+.btn--tiny { padding: .32rem .6rem; font-size: .7rem; border-radius: 7px; }
+.btn--danger { color: var(--accent); }
+.btn--danger:hover { background: var(--accent); border-color: var(--accent); color: var(--paper); }
+html[data-theme="night"] .btn--danger:hover { color: #1a1610; }
+.btn:disabled { opacity: .55; pointer-events: none; }
+
+/* ================= Reading someone else's share ================= */
+
+/* hidden unless the app booted from a link */
+.sharedbar { display: none; }
+.sharedfail { display: none; }
+
+.app[data-shared="on"] .sharedbar {
+  display: flex; align-items: center; gap: .6rem;
+  padding: .5rem clamp(.9rem, 3vw, 1.5rem);
+  border-bottom: 1px solid var(--line);
+  background: var(--paper-2);
+}
+.sharedbar__icon { display: grid; place-items: center; color: var(--accent); }
+.sharedbar__text { display: flex; align-items: baseline; gap: .5rem; min-width: 0; }
+.sharedbar__text strong {
+  font-family: var(--sans); font-size: .82rem; font-weight: 600; color: var(--ink);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.sharedbar__text span { font-family: var(--ui); font-size: .68rem; color: var(--ink-faint); white-space: nowrap; }
+.sharedbar__badge {
+  margin-left: auto;
+  font-family: var(--ui); font-size: .66rem; letter-spacing: .03em;
+  color: var(--ink-soft); border: 1px solid var(--line-2);
+  border-radius: 99px; padding: .2rem .55rem; white-space: nowrap;
+}
+
+/* A shared document is someone else's: no saving, no mode switching, and no
+   local-library controls. Reading settings and the tree stay — that's the point. */
+.app[data-shared="on"] #saveBtn,
+.app[data-shared="on"] #shareBtn,
+.app[data-shared="on"] .seg,
+.app[data-shared="on"] .sources,
+.app[data-shared="on"] .curfolder,
+.app[data-shared="on"] .recents { display: none; }
+
+/* no document open yet — nothing to share */
+.app:not([data-has-doc="true"]) #shareBtn { display: none; }
+
+/* ---------- a link that didn't open ---------- */
+.app[data-shared="error"] .topbar,
+.app[data-shared="error"] .panes,
+.app[data-shared="error"] .welcome,
+.app[data-shared="error"] .sidebar,
+.app[data-shared="error"] .toc { display: none; }
+.app[data-shared="error"] { grid-template-columns: 0 1fr; }
+
+.app[data-shared="error"] .sharedfail {
+  display: grid; place-items: center;
+  height: 100%; padding: 2rem;
+  text-align: center;
+}
+.sharedfail__inner { max-width: 26rem; display: grid; justify-items: center; gap: .5rem; }
+.sharedfail__mark { color: var(--ink-faint); opacity: .7; }
+.sharedfail__title {
+  font-family: var(--display); font-size: 1.5rem; font-weight: 600;
+  letter-spacing: -.015em; margin: .4rem 0 0;
+}
+.sharedfail__msg { font-family: var(--sans); font-size: .9rem; color: var(--ink); margin: 0; }
+.sharedfail__hint {
+  font-family: var(--sans); font-size: .78rem; line-height: 1.55;
+  color: var(--ink-soft); margin: 0 0 .8rem;
+}

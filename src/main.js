@@ -21,6 +21,8 @@ import { toggleTypePop, hint, wireUi } from "./modules/ui.js";
 import { renderRecents, getRecents } from "./modules/recents.js";
 import { wireScroll } from "./modules/scroll.js";
 import { wireEditor } from "./modules/editor.js";
+import { wireShare, bootShare } from "./modules/share.js";
+import { wireVault, bootVault } from "./modules/vault.js";
 import { onKey } from "./modules/keyboard.js";
 import { wireLaunch } from "./modules/launch.js";
 
@@ -130,6 +132,8 @@ function wire() {
   wireEditor();
   wireScroll();
   wireUi();
+  wireShare();
+  wireVault();
   wireFallbackInputs();
 
   // warn on unsaved
@@ -152,6 +156,15 @@ async function init() {
   setSidebar(innerWidth > 820); // start collapsed on phones
   app.dataset.mode = "read";
   wire();
+
+  // A /s/<id> or #d= link opens someone else's document instead of the local
+  // library. Decryption happens here, in the browser — see modules/share.js.
+  if (await bootShare()) return;
+
+  // Restores the sign-in state if a session cookie survived. Never blocks:
+  // sharing and reading work signed out, and the vault stays locked until the
+  // master password is entered anyway.
+  bootVault().catch(() => {});
 
   // OS file-handler: if the app was launched to open a file, consume it now
   // (before the recent-folder restore, so an explicitly opened file wins).
