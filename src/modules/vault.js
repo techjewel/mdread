@@ -15,7 +15,7 @@
    The blob itself is sealed with the same AES-GCM format as a share bundle. */
 
 import { deriveVaultKey, seal, open as unseal, toB64url } from "./crypto.js";
-import { readShares, writeShares, readTombstones, writeTombstones } from "./share.js";
+import { readShares, writeShares, readTombstones, writeTombstones, revokeShare, copyLink } from "./share.js";
 import { debounce, readJSON } from "./util.js";
 import { $, app, editor, MD_RE } from "./dom.js";
 import { toast } from "./ui.js";
@@ -399,12 +399,17 @@ export function renderVault() {
   }
 
   if (vaultState.unlocked) {
-    const n = readShares().length;
-    el("vaultCount").textContent = `${n} link${n === 1 ? "" : "s"}`;
+    const d = readDocs().length;
+    const l = readShares().length;
+    const parts = [];
+    if (d) parts.push(`${d} document${d === 1 ? "" : "s"}`);
+    if (l) parts.push(`${l} share link${l === 1 ? "" : "s"}`);
+    el("vaultCount").textContent = parts.join(" · ") || "Empty for now";
     el("vaultWho").textContent = vaultState.email;
   }
   if (vaultState.lastError) showError(vaultState.lastError);
   renderVaultBox();
+  if (el("vaultDlg")?.open) renderVaultGrid();
 }
 
 /* ---------------- the sidebar vault ---------------- */
@@ -475,7 +480,9 @@ export function renderVaultBox() {
   box.dataset.state = mode;
 
   el("vaultBoxCount").textContent = mode === "on" ? String(docs.length) : "";
-  el("vaultShowAll").hidden = mode !== "on";
+  // Links live in the vault too, so the way in must stay reachable even with no
+  // documents saved yet.
+  el("vaultShowAll").hidden = !vaultState.unlocked || !(docs.length || readShares().length);
 
   /* The add button lives in the topbar, with the document it acts on, rather
      than tucked into the sidebar. It states which of the two things it will do. */
@@ -504,24 +511,79 @@ export function renderVaultBox() {
 
 /* ---------------- the full vault ---------------- */
 
+let vaultTab = "docs";
+
+// Share links live in the same encrypted blob as documents, so they belong in
+// the same place — not only behind the per-document Share dialog.
+function linkRow(s) {
+  const row = document.createElement("div");
+  row.className = "vcard";
+
+  const main = document.createElement("div");
+  main.className = "vcard__open vcard__open--static";
+
+  const nm = document.createElement("span");
+  nm.className = "vcard__name";
+  nm.textContent = s.name;
+
+  const days = Math.max(0, Math.round((s.expiresAt - Date.now()) / 86400000));
+  const meta = document.createElement("span");
+  meta.className = "vcard__meta";
+  meta.textContent = `${s.kind === "folder" ? `${s.count} files` : "1 file"} · expires in ${days} day${days === 1 ? "" : "s"}`;
+  main.append(nm, meta);
+
+  const copy = document.createElement("button");
+  copy.className = "vcard__act";
+  copy.textContent = "Copy link";
+  copy.addEventListener("click", () => copyLink(`${location.origin}/s/${s.id}#k=${s.key}`));
+
+  const kill = document.createElement("button");
+  kill.className = "vcard__del";
+  kill.textContent = "Revoke";
+  kill.addEventListener("click", async () => {
+    kill.disabled = true;
+    await revokeShare(s.id);
+    toast("Link revoked");
+    renderVaultGrid();
+  });
+
+  row.append(main, copy, kill);
+  return row;
+}
+
 export function renderVaultGrid() {
   const grid = el("vaultGrid");
   if (!grid) return;
 
-  const q = el("vaultSearch").value.trim().toLowerCase();
-  const all = readDocs();
-  const docs = q ? all.filter((d) => `${d.name} ${d.path}`.toLowerCase().includes(q)) : all;
+  const docs = readDocs();
+  const links = readShares();
+  el("vtabDocsN").textContent = docs.length || "";
+  el("vtabLinksN").textContent = links.length || "";
+  el("vtabDocs").classList.toggle("is-on", vaultTab === "docs");
+  el("vtabLinks").classList.toggle("is-on", vaultTab === "links");
 
+  const q = el("vaultSearch").value.trim().toLowerCase();
+  const all = vaultTab === "docs" ? docs : links;
+  const shown = q
+    ? all.filter((x) => `${x.name} ${x.path || ""}`.toLowerCase().includes(q))
+    : all;
+
+  const noun = vaultTab === "docs" ? "document" : "link";
   el("vaultDlgStat").textContent = q
-    ? `${docs.length} of ${all.length}`
-    : `${all.length} document${all.length === 1 ? "" : "s"}`;
+    ? `${shown.length} of ${all.length}`
+    : `${all.length} ${noun}${all.length === 1 ? "" : "s"}`;
 
   grid.innerHTML = "";
-  for (const d of docs) grid.append(docRow(d, { wide: true }));
-  el("vaultNone").hidden = docs.length > 0 || !all.length;
+  for (const x of shown) grid.append(vaultTab === "docs" ? docRow(x, { wide: true }) : linkRow(x));
+
+  el("vaultNone").hidden = shown.length > 0 || !all.length;
+  el("vaultSearch").placeholder = vaultTab === "docs" ? "Search your documents…" : "Search your links…";
 }
 
-function openVaultDialog() {
+// Opens on whichever tab actually has something, so an empty view isn't the
+// first thing you meet.
+function openVaultDialog(tab) {
+  vaultTab = tab || (readDocs().length || !readShares().length ? "docs" : "links");
   el("vaultSearch").value = "";
   renderVaultGrid();
   const d = el("vaultDlg");
@@ -663,8 +725,18 @@ export function wireVault() {
   el("vaultBoxSignIn").addEventListener("click", openAccount);
   el("vaultBoxUnlock").addEventListener("click", openAccount);
 
-  el("vaultShowAll").addEventListener("click", openVaultDialog);
-  el("vaultMore").addEventListener("click", openVaultDialog);
+  el("vaultShowAll").addEventListener("click", () => openVaultDialog());
+  el("vaultMore").addEventListener("click", () => openVaultDialog("docs"));
+  el("vtabDocs").addEventListener("click", () => {
+    vaultTab = "docs";
+    el("vaultSearch").value = "";
+    renderVaultGrid();
+  });
+  el("vtabLinks").addEventListener("click", () => {
+    vaultTab = "links";
+    el("vaultSearch").value = "";
+    renderVaultGrid();
+  });
   el("vaultDlgClose").addEventListener("click", () => el("vaultDlg").close());
   el("vaultDlg").addEventListener("click", (e) => e.target === el("vaultDlg") && el("vaultDlg").close());
   el("vaultSearch").addEventListener("input", debounce(renderVaultGrid, 120));

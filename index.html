@@ -88,10 +88,10 @@
           </div>
 
           <button class="vaultbox__cta" data-vs="out" id="vaultBoxSignIn">
-            Sign in to keep encrypted copies of your documents
+            Sign in to keep encrypted copies of your documents and share links
           </button>
           <button class="vaultbox__cta" data-vs="locked" id="vaultBoxUnlock">
-            Unlock to see your documents
+            Unlock to see your documents and links
           </button>
           <p class="vaultbox__empty" data-vs="empty">
             Nothing here yet. Open a document and press <strong>Add to vault</strong> to keep an encrypted copy.
@@ -393,13 +393,22 @@
     <h2 class="dlg__title" id="vaultDlgTitle">Your vault</h2>
     <p class="dlg__lede">
       Encrypted with your master password before upload. <strong>mdread can't read any of it.</strong>
-      Open one from any device you've signed in on.
+      Reachable from any device you've signed in on.
     </p>
+
+    <div class="vtabs" role="tablist">
+      <button class="vtab is-on" id="vtabDocs" data-vtab="docs" role="tab">
+        Documents <span class="vtab__n" id="vtabDocsN"></span>
+      </button>
+      <button class="vtab" id="vtabLinks" data-vtab="links" role="tab">
+        Share links <span class="vtab__n" id="vtabLinksN"></span>
+      </button>
+    </div>
 
     <div class="vgrid__bar">
       <div class="vgrid__search">
         <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><circle cx="11" cy="11" r="6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="m16 16 4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-        <input id="vaultSearch" type="search" placeholder="Search your vault…" autocomplete="off" spellcheck="false" />
+        <input id="vaultSearch" type="search" placeholder="Search…" autocomplete="off" spellcheck="false" />
       </div>
       <span class="vgrid__stat" id="vaultDlgStat"></span>
     </div>
@@ -420,10 +429,14 @@
       <!-- ── signed out ── -->
       <div class="vault__pane" data-pane="out">
         <p class="dlg__lede">
-          Sharing works perfectly without an account. Sign in only if you want your
-          <strong>share links</strong> to survive clearing this browser, or to reach them from another device.
+          Reading, editing and sharing all work without an account. Sign in to keep
+          <strong>documents in your vault</strong> and carry your <strong>share links</strong> between devices.
         </p>
-        <p class="vault__note">Your documents are never uploaded. This syncs the list of links you've created, nothing else.</p>
+        <p class="vault__note">
+          Nothing is uploaded unless you ask for it — <strong>Add to vault</strong> for a document,
+          <strong>Share</strong> for a link. Both are encrypted in your browser first, with a master
+          password we never receive.
+        </p>
         <label class="vault__label" for="vaultEmail">Email address</label>
         <div class="vault__row">
           <input type="email" id="vaultEmail" name="email" placeholder="you@example.com" autocomplete="email" spellcheck="false" />
@@ -443,9 +456,9 @@
       <div class="vault__pane" data-pane="setup">
         <p class="dlg__lede">Choose a master password.</p>
         <p class="vault__note">
-          This is the key your share links are <strong>encrypted and decrypted</strong> with, right here in your
-          browser. It is never sent to mdread — which is why we can't read your vault, and equally why we
-          can't help you back into it.
+          This is the key your vault — documents and share links alike — is <strong>encrypted and
+          decrypted</strong> with, right here in your browser. It is never sent to mdread, which is why we
+          can't read your vault, and equally why we can't help you back into it.
         </p>
         <label class="vault__label" for="vaultEmail2">Email address</label>
         <div class="vault__row">
@@ -473,7 +486,7 @@
       <!-- ── returning: unlock ── -->
       <div class="vault__pane" data-pane="locked">
         <p class="dlg__lede">Enter your master password.</p>
-        <p class="vault__note">It decrypts your saved links in this browser. mdread never sees it.</p>
+        <p class="vault__note">It decrypts your documents and share links, here in this browser. mdread never sees it.</p>
         <label class="vault__label" for="vaultEmail3">Email address</label>
         <div class="vault__row">
           <input type="email" id="vaultEmail3" name="email" placeholder="you@example.com" autocomplete="email" spellcheck="false" />
@@ -492,12 +505,12 @@
 
       <!-- ── unlocked ── -->
       <div class="vault__pane" data-pane="on">
-        <p class="dlg__lede">Your links are syncing.</p>
+        <p class="dlg__lede">Your vault is unlocked and syncing.</p>
         <div class="vault__stat">
-          <span class="vault__stat-n" id="vaultCount">0 links</span>
+          <span class="vault__stat-n" id="vaultCount">Empty</span>
           <span class="vault__stat-e" id="vaultWho"></span>
         </div>
-        <p class="vault__note">Encrypted in this browser before upload. Locks again when you close the tab.</p>
+        <p class="vault__note">Everything here was encrypted in this browser before upload.</p>
         <div class="vault__row vault__row--acts">
           <button class="btn btn--tiny" id="vaultLock">Lock now</button>
           <button class="btn btn--tiny btn--danger" id="vaultOut">Sign out</button>

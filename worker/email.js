@@ -35,9 +35,9 @@ const bodyText = (link) =>
     "",
     "It expires in 15 minutes and can only be used once.",
     "",
-    "Signing in only restores the list of share links you've created. You'll",
-    "still need your master password to decrypt it — mdread does not have it",
-    "and cannot reset it.",
+    "Signing in gets you back to your vault — the documents you saved and the",
+    "share links you created. You'll still need your master password to decrypt",
+    "it. mdread does not have that password and cannot reset it.",
     "",
     "If you didn't ask for this, you can ignore this email.",
   ].join("\n");
@@ -50,8 +50,9 @@ const bodyHtml = (link) => `<!doctype html>
     <a href="${link}" style="display:inline-block;background:#b6502f;color:#faf6ee;text-decoration:none;padding:.7rem 1.3rem;border-radius:9px;font-size:.95rem">Sign in</a>
   </p>
   <p style="margin:0 0 1.5rem;font-size:.85rem;color:#5b5347">
-    Signing in only restores the list of share links you've created. You'll still need your
-    <strong>master password</strong> to decrypt it — mdread does not have it and cannot reset it.
+    Signing in gets you back to your vault — the documents you saved and the share links you
+    created. You'll still need your <strong>master password</strong> to decrypt it, and mdread
+    does not have that password and cannot reset it.
   </p>
   <p style="margin:0;font-size:.8rem;color:#8c8474">
     If you didn't ask for this, you can ignore this email. The link below is the same as the button above.<br>

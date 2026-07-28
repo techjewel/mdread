@@ -274,7 +274,7 @@ function renderShareList() {
   }
 }
 
-async function copyLink(url) {
+export async function copyLink(url) {
   try {
     await navigator.clipboard.writeText(url);
     toast("Link copied ✓");

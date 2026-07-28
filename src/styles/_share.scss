@@ -228,6 +228,28 @@ html[data-theme="night"] .vrow.is-current .vrow__meta { color: #1a1610; }
 /* ---------- the full vault, in a roomy dialog ---------- */
 .dlg--wide { width: min(46rem, calc(100vw - 2rem)); }
 
+.vtabs {
+  display: flex; gap: .2rem;
+  margin: 1.1rem 0 0; padding-bottom: .5rem;
+  border-bottom: 1px solid var(--line);
+}
+.vtab {
+  display: inline-flex; align-items: center; gap: .35rem;
+  padding: .35rem .7rem; border-radius: 8px;
+  font-family: var(--ui); font-size: .74rem; color: var(--ink-faint);
+  transition: .14s var(--ease);
+}
+.vtab:hover { color: var(--ink); background: var(--paper-2); }
+.vtab.is-on { color: var(--ink); background: var(--paper-2); }
+.vtab__n {
+  min-width: 1.1rem; padding: 0 .25rem; border-radius: 99px;
+  font-size: .64rem; text-align: center;
+  background: var(--line); color: var(--ink-soft);
+}
+.vtab__n:empty { display: none; }
+.vtab.is-on .vtab__n { background: var(--accent); color: var(--paper); }
+html[data-theme="night"] .vtab.is-on .vtab__n { color: #1a1610; }
+
 .vgrid__bar {
   display: flex; align-items: center; gap: .7rem;
   margin: 1.1rem 0 .8rem;
@@ -278,6 +300,17 @@ html[data-theme="night"] .vrow.is-current .vrow__meta { color: #1a1610; }
   font-family: var(--ui); font-size: .67rem; color: var(--ink-faint);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
+/* A link row has nothing to open, so it isn't a button. */
+.vcard__open--static { cursor: default; }
+
+.vcard__act {
+  flex: none; padding: .3rem .6rem; border-radius: 7px;
+  border: 1px solid var(--line-2);
+  font-family: var(--ui); font-size: .68rem; color: var(--ink-soft);
+  transition: .14s var(--ease);
+}
+.vcard__act:hover { border-color: var(--accent); color: var(--accent); }
+
 .vcard__del {
   flex: none; margin-right: .5rem; padding: .3rem .6rem;
   border-radius: 7px; border: 1px solid transparent;
