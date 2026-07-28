@@ -9,5 +9,14 @@
   "theme_color": "#faf6ee",
   "icons": [
     { "src": "./icons/icon.svg", "type": "image/svg+xml", "sizes": "any", "purpose": "any maskable" }
+  ],
+  "launch_handler": { "client_mode": "focus-existing" },
+  "file_handlers": [
+    {
+      "action": "./",
+      "accept": {
+        "text/markdown": [".md", ".markdown", ".mdown", ".mkd", ".mkdn", ".mdwn", ".mdx"]
+      }
+    }
   ]
 }

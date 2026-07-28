@@ -24,6 +24,7 @@ import { wireEditor } from "./modules/editor.js";
 import { wireShare, bootShare } from "./modules/share.js";
 import { wireVault, bootVault } from "./modules/vault.js";
 import { onKey } from "./modules/keyboard.js";
+import { wireLaunch } from "./modules/launch.js";
 
 function wire() {
   // sources
@@ -181,6 +182,12 @@ async function init() {
       await setRoot(h);
     }
   } catch {}
+
+  // OS file-handler, wired last on purpose. setRoot() above calls addFiles with
+  // replace=true and then opens lastDoc, so a launch consumed any earlier gets
+  // wiped from the tree and scrolled past. Claiming the queue after the restore
+  // means the launched file appends to the library and wins the final openDoc.
+  wireLaunch();
 
   // The service worker is registered automatically by vite-plugin-pwa (offline shell).
 }
