@@ -15,6 +15,9 @@ export default defineConfig({
         // function here, not the classic object form.)
         manualChunks(id) {
           if (/node_modules\/(marked|dompurify|highlight\.js)\//.test(id)) return "vendor";
+          // Yjs is only reached through the dynamic import in share.js, so it
+          // stays a lazy chunk — a reader who never co-edits never fetches it.
+          if (/node_modules\/(yjs|lib0)\//.test(id)) return "collab";
         },
       },
     },

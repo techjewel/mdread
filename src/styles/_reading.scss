@@ -15,9 +15,14 @@
 .reading > * { animation: rise .5s var(--ease) both; }
 
 /* In split mode the preview re-renders on every keystroke; replaying the
-   entrance animations (docin/rise) makes it flash. Render instantly while editing. */
+   entrance animations (docin/rise) makes it flash. Render instantly while editing.
+
+   In a co-editing room the re-renders come from someone else's keystrokes, so
+   read mode is affected just as badly — there is no "you are typing" to hide it. */
 .app[data-mode="split"] .reading,
-.app[data-mode="split"] .reading > * { animation: none; }
+.app[data-mode="split"] .reading > *,
+.app[data-collab="on"] .reading,
+.app[data-collab="on"] .reading > * { animation: none; }
 
 .reading p { margin: 0 0 1.2em; hanging-punctuation: first allow-end; text-wrap: pretty; }
 .reading h1, .reading h2, .reading h3, .reading h4 {

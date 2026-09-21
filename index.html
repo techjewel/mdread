@@ -163,6 +163,7 @@
             <svg class="vault-add__tick" viewBox="0 0 24 24" width="15" height="15" fill="none" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
             <span id="vaultAddLabel">Add to vault</span>
           </button>
+          <button class="collab-pill" id="collabPill" data-state="connecting" title="Live co-editing"></button>
           <button class="icon-btn" id="shareBtn" title="Share — end-to-end encrypted (⇧⌘S)" aria-label="Share">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none"><path d="M10.6 13.4a3.6 3.6 0 0 0 5.1 0l2.7-2.7a3.6 3.6 0 0 0-5.1-5.1l-1.2 1.2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M13.4 10.6a3.6 3.6 0 0 0-5.1 0l-2.7 2.7a3.6 3.6 0 0 0 5.1 5.1l1.2-1.2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
           </button>
@@ -232,6 +233,13 @@
               </span>
               <h3 class="wf__t">Read, write, download</h3>
               <p class="wf__d">Typography tuned for hours of reading. Edit in place, save straight to disk, or export clean Markdown.</p>
+            </li>
+            <li class="wf wf--wide">
+              <span class="wf__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none"><circle cx="9" cy="8" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="17" cy="9.5" r="2.2" stroke="currentColor" stroke-width="1.5"/><path d="M16 14.6a4.4 4.4 0 0 1 4.5 4.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+              </span>
+              <h3 class="wf__t">Co-edit live <em class="wf__tag">new</em></h3>
+              <p class="wf__d">Share a link and write the same document together, in real time. Every keystroke is <strong>sealed in your browser</strong> before it reaches the relay — so live collaboration stays end-to-end encrypted, like everything else here. The server forwards bytes it can't read.</p>
             </li>
           </ul>
 
@@ -329,7 +337,7 @@
       </label>
     </fieldset>
 
-    <fieldset class="share__group">
+    <fieldset class="share__group" id="shareLinkTypeGroup">
       <legend class="share__legend">Link type</legend>
       <label class="share__opt">
         <input type="radio" name="shareLinkType" id="shareStored" checked />
@@ -340,6 +348,15 @@
         <input type="radio" name="shareLinkType" id="shareInline" />
         <span class="share__opt-t">Self-contained link</span>
         <span class="share__opt-d">Nothing is uploaded at all — the whole document rides inside the URL. Small files only, and it can't be revoked.</span>
+      </label>
+    </fieldset>
+
+    <fieldset class="share__group">
+      <legend class="share__legend">Live co-editing <em class="share__beta">beta</em></legend>
+      <label class="share__opt">
+        <input type="checkbox" id="shareCoedit" />
+        <span class="share__opt-t">Everyone edits the same document, live</span>
+        <span class="share__opt-d">Still end-to-end encrypted — edits are sealed in your browser before they reach the relay, so we can't read them. Anyone with the link can edit.</span>
       </label>
     </fieldset>
 
@@ -361,6 +378,7 @@
         <input id="shareUrl" class="share__url" readonly spellcheck="false" />
         <button class="btn" id="shareCopy">Copy</button>
       </div>
+      <p class="share__note" id="shareLiveNote" hidden>You're in the room now. Anyone who opens this link joins the same document and can edit it. The room disappears after 30 days of silence.</p>
       <p class="share__note">Anyone with this link can read the document. Treat it like a password — and copy it whole, it stops working if it gets cut short.</p>
     </div>
 
