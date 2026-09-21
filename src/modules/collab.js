@@ -15,10 +15,10 @@
 
 import * as Y from "yjs";
 import { state } from "./state.js";
-import { $, app, editor, docName, readingScroll } from "./dom.js";
+import { $, app, editor, docName } from "./dom.js";
 import { debounce } from "./util.js";
 import { sealBytes, openBytes, importKeyRW } from "./crypto.js";
-import { renderMarkdown } from "./markdown.js";
+import { renderMarkdown, patchMarkdown } from "./markdown.js";
 import { renderTree } from "./tree.js";
 import { setMode } from "./view.js";
 import { updateSub } from "./document.js";
@@ -37,24 +37,21 @@ const RETRY_MAX = 10000;
 let room = null;
 let lastRendered = null;
 
-/* Re-rendering the preview is expensive: renderMarkdown() replaces the whole
-   reading column, rebuilds every heading anchor and the TOC, and re-runs
-   highlight.js over each code block. Local typing only pays that every 140ms
-   (the liveRender debounce in editor.js), so remote edits must not pay it on
-   every frame — at a 60ms batch that is ~16 full repaints a second, which is
-   what makes someone else's typing look like flicker.
+/* Someone else's keystrokes arrive many times a second. renderMarkdown() would
+   replace the whole reading column for each one — tearing down every block,
+   rebuilding the TOC and re-running highlight.js — which is what read and split
+   modes showed as flicker. patchMarkdown() writes the same result block by
+   block, so an edit to one paragraph repaints that paragraph and nothing else.
 
-   The textarea still updates synchronously; only the preview waits. */
+   The debounce stays at 140ms to match liveRender in editor.js, which bounds how
+   often the markdown is re-parsed; the patch is what removes the flicker, since
+   natural typing pauses let a trailing debounce fire on almost every word. */
 const renderSoon = debounce(() => {
   if (!room || app.dataset.mode === "edit") return;
   const text = room.ytext.toString();
   if (text === lastRendered) return;
   lastRendered = text;
-  // Swapping innerHTML collapses the column for a frame, so the scroll offset
-  // has to be put back or the page jumps under a reader who isn't typing.
-  const top = readingScroll.scrollTop;
-  renderMarkdown(text);
-  readingScroll.scrollTop = top;
+  patchMarkdown(text);
 }, 140);
 
 export const inRoom = () => !!room;
