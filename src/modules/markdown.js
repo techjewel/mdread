@@ -78,14 +78,28 @@ function linksIn(el) {
    node so patchMarkdown() can compare like with like — by the time a block is
    on screen it has picked up a heading id, a ¶ anchor and hljs classes that a
    freshly parsed block does not have. */
-function adopt(el) {
-  el.__src = el.outerHTML;
+function adopt(el, src) {
+  el.__src = src;
+}
+
+/* Update a block in place when it is the same kind of block. Swapping the node
+   out re-triggers the `rise` entrance animation in _reading.scss — half a second
+   of fade-in from transparent — so the one paragraph being typed into would
+   flash on every render. A node that is never re-inserted cannot replay an
+   entrance animation, whatever the stylesheet says now or later. */
+function morph(a, b) {
+  if (a.tagName !== b.tagName) return false;
+  for (const { name, value } of b.attributes) {
+    if (a.getAttribute(name) !== value) a.setAttribute(name, value);
+  }
+  a.innerHTML = b.innerHTML;
+  return true;
 }
 
 export function renderMarkdown(md) {
   reading.innerHTML = toHtml(md);
   const kids = [...reading.children];
-  for (const el of kids) adopt(el);
+  for (const el of kids) adopt(el, el.outerHTML);
   buildToc(indexHeadings());
   for (const el of kids) {
     highlightIn(el);
@@ -120,8 +134,10 @@ export function patchMarkdown(md) {
       continue;
     }
 
+    const src = b.outerHTML;
+
     if (!a) {
-      adopt(b);
+      adopt(b, src);
       reading.appendChild(b);
       touched.push(b);
       if (holdsHeading(b)) headingsChanged = true;
@@ -129,12 +145,20 @@ export function patchMarkdown(md) {
     }
 
     // Unchanged blocks are never touched, so the browser never repaints them.
-    if (a.__src === b.outerHTML) continue;
+    if (a.__src === src) continue;
 
     if (holdsHeading(a) || holdsHeading(b)) headingsChanged = true;
-    adopt(b);
-    a.replaceWith(b);
-    touched.push(b);
+
+    // `src` is the pristine, pre-decoration html either way — that is what the
+    // next pass compares a freshly parsed block against.
+    if (morph(a, b)) {
+      adopt(a, src);
+      touched.push(a);
+    } else {
+      adopt(b, src);
+      a.replaceWith(b);
+      touched.push(b);
+    }
   }
 
   if (headingsChanged) buildToc(indexHeadings());
