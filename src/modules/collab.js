@@ -15,7 +15,8 @@
 
 import * as Y from "yjs";
 import { state } from "./state.js";
-import { $, app, editor, docName } from "./dom.js";
+import { $, app, editor, docName, readingScroll } from "./dom.js";
+import { debounce } from "./util.js";
 import { sealBytes, openBytes, importKeyRW } from "./crypto.js";
 import { renderMarkdown } from "./markdown.js";
 import { renderTree } from "./tree.js";
@@ -34,6 +35,27 @@ const BATCH_MS = 60; // merge a burst of keystrokes into one frame
 const RETRY_MAX = 10000;
 
 let room = null;
+let lastRendered = null;
+
+/* Re-rendering the preview is expensive: renderMarkdown() replaces the whole
+   reading column, rebuilds every heading anchor and the TOC, and re-runs
+   highlight.js over each code block. Local typing only pays that every 140ms
+   (the liveRender debounce in editor.js), so remote edits must not pay it on
+   every frame — at a 60ms batch that is ~16 full repaints a second, which is
+   what makes someone else's typing look like flicker.
+
+   The textarea still updates synchronously; only the preview waits. */
+const renderSoon = debounce(() => {
+  if (!room || app.dataset.mode === "edit") return;
+  const text = room.ytext.toString();
+  if (text === lastRendered) return;
+  lastRendered = text;
+  // Swapping innerHTML collapses the column for a frame, so the scroll offset
+  // has to be put back or the page jumps under a reader who isn't typing.
+  const top = readingScroll.scrollTop;
+  renderMarkdown(text);
+  readingScroll.scrollTop = top;
+}, 140);
 
 export const inRoom = () => !!room;
 export const roomLink = () => (room ? `${location.origin}/c/${room.id}#k=${room.keyStr}` : "");
@@ -184,6 +206,7 @@ export function leaveRoom() {
   } catch {}
   room.doc.destroy();
   room = null;
+  lastRendered = null;
   delete app.dataset.collab;
 }
 
@@ -241,7 +264,7 @@ function bindEditor(doc, ytext) {
       updateSub();
     }
     // In edit mode there is no preview on screen to update.
-    if (app.dataset.mode !== "edit") renderMarkdown(text);
+    if (app.dataset.mode !== "edit") renderSoon();
   };
 
   editor.addEventListener("input", onInput);
@@ -289,6 +312,7 @@ function mountGuestDoc(name, text) {
   docName.textContent = name.replace(/\.\w+$/, "");
   editor.value = text;
   renderMarkdown(text);
+  lastRendered = text;
   updateSub();
   renderTree();
   setMode("split");
