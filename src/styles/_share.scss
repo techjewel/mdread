@@ -497,3 +497,66 @@ html[data-theme="night"] .btn--danger:hover { color: #1a1610; }
   font-family: var(--sans); font-size: .78rem; line-height: 1.55;
   color: var(--ink-soft); margin: 0 0 .8rem;
 }
+
+/* ---------------- live co-editing (spike) ----------------
+   The pill only exists while [data-collab] is on #app, which collab.js sets
+   once a room is synced — same state-driven pattern as everything else. */
+
+.collab-pill {
+  display: none;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.28rem 0.62rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--bg-soft);
+  color: var(--ink-soft);
+  font-size: 0.74rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  cursor: default;
+
+  &::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+
+  &[data-state="on"] {
+    color: var(--accent);
+  }
+  &[data-state="offline"],
+  &[data-state="error"] {
+    color: var(--accent);
+  }
+  &[data-state="connecting"]::before,
+  &[data-state="offline"]::before {
+    animation: collab-blink 1.1s ease-in-out infinite;
+  }
+}
+
+[data-collab="on"] .collab-pill {
+  display: inline-flex;
+}
+
+@keyframes collab-blink {
+  50% {
+    opacity: 0.25;
+  }
+}
+
+.share__beta {
+  margin-left: 0.4rem;
+  padding: 0.05rem 0.35rem;
+  border-radius: 4px;
+  background: var(--bg-soft);
+  border: 1px solid var(--line);
+  font-size: 0.66rem;
+  font-style: normal;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}

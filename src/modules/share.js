@@ -5,15 +5,18 @@
    the URL *fragment*, which browsers never transmit — so the link is the
    capability, and we cannot read what you shared.
 
-   Two link shapes, both handled by `bootShare()` at startup:
+   Three link shapes, all handled by `bootShare()` at startup:
      /s/<id>#k=<key>   stored  — ciphertext in Workers KV, expires
      #d=<payload>      self-contained — nothing is uploaded at all
+     /c/<id>#k=<key>   live co-editing room (SPIKE) — see modules/collab.js.
+                       No bundle is uploaded: the document itself arrives as
+                       sealed CRDT updates over a WebSocket.
 
    A share bundle is JSON: { v, kind, name, files: [{ path, name, content }] }
    It is gzipped and sealed by crypto.js before it ever touches the network. */
 
 import { state } from "./state.js";
-import { $, $$, app, MD_RE } from "./dom.js";
+import { $, $$, app, editor, MD_RE } from "./dom.js";
 import { readJSON } from "./util.js";
 import { newKey, exportKey, importKey, seal, open as unseal, toB64url, fromB64url } from "./crypto.js";
 import { renderTree } from "./tree.js";
@@ -135,6 +138,33 @@ export async function createShare({ scope, inline, expiryDays }) {
   return { url, inline: false, name: bundle.name, expiresAt };
 }
 
+/* ---------------- co-editing rooms (spike) ----------------
+
+   Nothing is uploaded here. We mint a room id and a key, open the socket, and
+   the current document becomes the room's first update. Yjs is loaded lazily
+   so a reader who never co-edits never downloads it. */
+
+export async function createRoomLink() {
+  const f = state.current;
+  if (!f) throw new Error("Open a document first");
+
+  const id = toB64url(crypto.getRandomValues(new Uint8Array(9))); // 12 chars, unguessable
+  const key = await newKey();
+  const keyStr = await exportKey(key);
+
+  const { enterRoom } = await import("./collab.js");
+  await enterRoom({
+    id,
+    keyStr,
+    seed: {
+      name: f.name,
+      text: app.dataset.mode === "read" ? f.content || "" : editor.value,
+    },
+  });
+
+  return { url: `${location.origin}/c/${id}#k=${keyStr}`, name: f.name };
+}
+
 export async function revokeShare(id) {
   const rec = readShares().find((s) => s.id === id);
   if (!rec) return;
@@ -152,8 +182,12 @@ function incomingLink() {
   const hash = location.hash || "";
   if (hash.startsWith("#d=")) return { inline: true, data: hash.slice(3) };
 
-  const m = location.pathname.match(/^\/s\/([A-Za-z0-9_-]{6,64})\/?$/);
   const k = hash.startsWith("#k=") ? hash.slice(3) : "";
+
+  const c = location.pathname.match(/^\/c\/([A-Za-z0-9_-]{8,64})\/?$/);
+  if (c) return { room: true, id: c[1], keyStr: k };
+
+  const m = location.pathname.match(/^\/s\/([A-Za-z0-9_-]{6,64})\/?$/);
   if (m) return { inline: false, id: m[1], keyStr: k };
   return null;
 }
@@ -166,6 +200,16 @@ export async function bootShare() {
 
   app.dataset.shared = "loading";
   try {
+    if (link.room) {
+      if (!link.keyStr) throw new Error("This link is missing its key — it may have been truncated when it was copied");
+      const { enterRoom } = await import("./collab.js");
+      await enterRoom({ id: link.id, keyStr: link.keyStr });
+      // A room is a live document you can edit, not a read-only share, so the
+      // [data-shared] chrome (which hides save and the mode switch) stays off.
+      delete app.dataset.shared;
+      return true;
+    }
+
     let payload, keyStr;
 
     if (link.inline) {
@@ -230,7 +274,11 @@ function syncDialog() {
   folderScope.disabled = n < 2;
   folderScope.closest(".share__opt").hidden = n < 2;
   $("#shareFolderCount").textContent = `${n} file${n === 1 ? "" : "s"}`;
-  $("#shareExpiryRow").hidden = $("#shareInline").checked;
+  // A room has no stored bundle, so link type and expiry don't apply to it.
+  const live = $("#shareCoedit").checked;
+  $("#shareLinkTypeGroup").hidden = live;
+  $("#shareExpiryRow").hidden = live || $("#shareInline").checked;
+  $("#shareCreate").textContent = live ? "Start co-editing" : "Create link";
   renderShareList();
 }
 
@@ -289,6 +337,7 @@ export function openShareDialog() {
   $("#shareResult").hidden = true;
   $("#shareCreate").hidden = false;
   $("#shareError").hidden = true;
+  $("#shareLiveNote").hidden = true;
   syncDialog();
   dlg().showModal();
 }
@@ -303,19 +352,24 @@ export function wireShare() {
     if (e.target === d) d.close(); // backdrop
   });
   $$("input[name=shareLinkType]").forEach((r) => r.addEventListener("change", syncDialog));
+  $("#shareCoedit").addEventListener("change", syncDialog);
 
   $("#shareCreate").addEventListener("click", async () => {
     const btn = $("#shareCreate");
     const err = $("#shareError");
     btn.disabled = true;
-    btn.textContent = "Encrypting…";
+    btn.textContent = $("#shareCoedit").checked ? "Opening room…" : "Encrypting…";
     err.hidden = true;
     try {
-      const out = await createShare({
-        scope: $("#shareScopeFolder").checked ? "folder" : "file",
-        inline: $("#shareInline").checked,
-        expiryDays: +$("#shareExpiry").value,
-      });
+      const live = $("#shareCoedit").checked;
+      const out = live
+        ? await createRoomLink()
+        : await createShare({
+            scope: $("#shareScopeFolder").checked ? "folder" : "file",
+            inline: $("#shareInline").checked,
+            expiryDays: +$("#shareExpiry").value,
+          });
+      $("#shareLiveNote").hidden = !live;
       $("#shareUrl").value = out.url;
       $("#shareResult").hidden = false;
       btn.hidden = true;
@@ -326,7 +380,7 @@ export function wireShare() {
       err.hidden = false;
     } finally {
       btn.disabled = false;
-      btn.textContent = "Create link";
+      btn.textContent = $("#shareCoedit").checked ? "Start co-editing" : "Create link";
     }
   });
 

@@ -79,27 +79,29 @@ export async function exportKey(key) {
   return toB64url(new Uint8Array(await crypto.subtle.exportKey("raw", key)));
 }
 
-export function importKey(str) {
+function rawKey(str) {
   const raw = fromB64url(str);
   // WebCrypto's own error here ("AES key data must be 128 or 256 bits") is
   // useless to a reader whose link simply got truncated in a chat client.
   if (raw.length !== 32) throw new Error("This link's key is incomplete — copy the whole link and try again");
-  return crypto.subtle.importKey("raw", raw, { name: "AES-GCM" }, false, ["decrypt"]);
+  return raw;
+}
+
+export function importKey(str) {
+  return crypto.subtle.importKey("raw", rawKey(str), { name: "AES-GCM" }, false, ["decrypt"]);
+}
+
+/* A co-editing link is a *write* capability: everyone holding it seals their own
+   updates. Kept separate from importKey() on purpose, so a plain /s/ share link
+   can never be turned into an encryptor. */
+export function importKeyRW(str) {
+  return crypto.subtle.importKey("raw", rawKey(str), { name: "AES-GCM" }, false, ["encrypt", "decrypt"]);
 }
 
 /* ---------------- seal / open ----------------
    Payload layout:  [0] format  [1] flags  [2..13] iv  [14..] ciphertext */
 
-export async function seal(key, text) {
-  let body = new TextEncoder().encode(text);
-  let flags = 0;
-  if (supportsGzip) {
-    body = await gzip(body);
-    flags |= FLAG_GZIP;
-  }
-  const iv = crypto.getRandomValues(new Uint8Array(IV_BYTES));
-  const ct = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, body));
-
+function frame(flags, iv, ct) {
   const payload = new Uint8Array(2 + IV_BYTES + ct.length);
   payload[0] = FORMAT;
   payload[1] = flags;
@@ -108,14 +110,24 @@ export async function seal(key, text) {
   return payload;
 }
 
-export async function open(key, payload) {
+function unframe(payload) {
   if (payload.length < 2 + IV_BYTES + 1) throw new Error("Share payload is truncated");
   if (payload[0] !== FORMAT) throw new Error(`Unsupported share format (v${payload[0]})`);
+  return {
+    flags: payload[1],
+    iv: payload.subarray(2, 2 + IV_BYTES),
+    ct: payload.subarray(2 + IV_BYTES),
+  };
+}
 
-  const flags = payload[1];
-  const iv = payload.subarray(2, 2 + IV_BYTES);
-  const ct = payload.subarray(2 + IV_BYTES);
+async function encrypt(key, body, flags) {
+  const iv = crypto.getRandomValues(new Uint8Array(IV_BYTES));
+  const ct = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, body));
+  return frame(flags, iv, ct);
+}
 
+async function decrypt(key, payload) {
+  const { flags, iv, ct } = unframe(payload);
   // A wrong key surfaces here as an OperationError from AES-GCM's auth tag check.
   let body;
   try {
@@ -123,6 +135,37 @@ export async function open(key, payload) {
   } catch {
     throw new Error("Could not decrypt — the link's key is wrong or incomplete");
   }
-  if (flags & FLAG_GZIP) body = await gunzip(body);
-  return new TextDecoder().decode(body);
+  return flags & FLAG_GZIP ? gunzip(body) : body;
 }
+
+export async function seal(key, text) {
+  let body = new TextEncoder().encode(text);
+  let flags = 0;
+  if (supportsGzip) {
+    body = await gzip(body);
+    flags |= FLAG_GZIP;
+  }
+  return encrypt(key, body, flags);
+}
+
+export async function open(key, payload) {
+  return new TextDecoder().decode(await decrypt(key, payload));
+}
+
+/* Bytes in, bytes out — the co-editing path, where each frame is one CRDT
+   update of a few dozen bytes. gzip is skipped below GZIP_MIN because its
+   header and footer cost more than they save on a payload that small; the
+   flag byte stays honest either way, so openBytes() needs no special case. */
+const GZIP_MIN = 512;
+
+export async function sealBytes(key, bytes) {
+  let body = bytes;
+  let flags = 0;
+  if (supportsGzip && body.length >= GZIP_MIN) {
+    body = await gzip(body);
+    flags |= FLAG_GZIP;
+  }
+  return encrypt(key, body, flags);
+}
+
+export const openBytes = decrypt;

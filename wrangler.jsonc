@@ -47,6 +47,12 @@
     // straight from assets, so the reader stays a pure static site
     "run_worker_first": ["/api/*"]
   },
+  // Live co-editing. One Durable Object per room, holding the open sockets and
+  // an append-only log of *sealed* CRDT updates — see worker/room.js. This is a
+  // binding (non-inherited), so it is repeated under env.production below.
+  "durable_objects": {
+    "bindings": [{ "name": "ROOMS", "class_name": "Room" }]
+  },
   // Forking? These belong to the maintainer's account. Create your own with
   // `wrangler kv namespace create SHARES` (and `--preview`, and the same for VAULT),
   // then paste the ids here — an id is an identifier, not a secret, but it only
@@ -65,6 +71,8 @@
       "preview_id": "faba139347d145f7b9f5320a2bf0af5f"
     }
   ],
+  // Inheritable, unlike the binding above — declared once for every environment.
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Room"] }],
   // 20 new links per minute per IP — generous for a person, useless for a spammer.
   // AUTH_LIMIT is tighter because each request sends an email to someone else's inbox.
   // `period` must be 10 or 60. namespace_id is a local identifier, not an account resource.
@@ -73,6 +81,15 @@
       "name": "SHARE_LIMIT",
       "namespace_id": "1001",
       "simple": { "limit": 20, "period": 60 }
+    },
+    {
+      // Room sockets per IP. A fresh room id mints a Durable Object that lives
+      // for 30 days, so this caps how fast one client can create them. Generous
+      // for a person with a few tabs and the odd reconnect (backoff tops out at
+      // 10s, so ~6/min per client), useless for spraying.
+      "name": "ROOM_LIMIT",
+      "namespace_id": "1003",
+      "simple": { "limit": 30, "period": 60 }
     },
     {
       "name": "AUTH_LIMIT",
@@ -101,11 +118,19 @@
         { "binding": "SHARES", "id": "769bbbd3b75a4f369bd798d8d3f4c66e" },
         { "binding": "VAULT", "id": "10f2860e82ba4f69a10a499ba1ee7820" }
       ],
+      "durable_objects": {
+        "bindings": [{ "name": "ROOMS", "class_name": "Room" }]
+      },
       "ratelimits": [
         {
           "name": "SHARE_LIMIT",
           "namespace_id": "1001",
           "simple": { "limit": 20, "period": 60 }
+        },
+        {
+          "name": "ROOM_LIMIT",
+          "namespace_id": "1003",
+          "simple": { "limit": 30, "period": 60 }
         },
         {
           "name": "AUTH_LIMIT",
