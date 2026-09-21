@@ -2,9 +2,9 @@
 
 **A quiet reading room for your markdown.** Drop a file or a whole folder, read it
 beautifully, edit it in place, and download it — all in the browser. Local-first:
-your files never leave your device unless you choose to share, and share links are
-end-to-end encrypted so the server can't read them either. Deploys to Cloudflare in
-one command.
+your files never leave your device unless you choose to share. Share links — and live
+co-editing rooms — are end-to-end encrypted, so the server can't read them either.
+Deploys to Cloudflare in one command.
 
 🔗 **Live: [mdread.app](https://mdread.app)** · MIT licensed · no accounts · no tracking
 
@@ -28,6 +28,11 @@ one command.
   send — so the server stores ciphertext it cannot read. Links expire, and you can
   revoke them. Small documents can use a **self-contained link** that uploads nothing
   at all: the whole encrypted document rides inside the URL.
+- 👥 **Co-edit live** — turn a share into a room and write the same document together in
+  real time. Every burst of typing is a small CRDT update **sealed in your browser**
+  before it reaches the relay, so collaboration is end-to-end encrypted like everything
+  else here: the server orders and forwards bytes it cannot read. Anyone holding the
+  link can edit.
 - 🗄️ **Vault** — keep encrypted copies of documents in the cloud and open them from any
   device. Each document is sealed in your browser with a key derived from your **master
   password**, so the server stores bytes it cannot read. **Add to vault** sits in the
@@ -46,8 +51,11 @@ one command.
 Everything runs client-side with three small markdown libraries
 ([marked](https://marked.js.org), [DOMPurify](https://github.com/cure53/DOMPurify),
 [highlight.js](https://highlightjs.org)) bundled and self-hosted, and **system fonts
-only** — no third-party requests at runtime, ever. The only network call the app
-ever makes is to its own origin, and only when you create or open a share link.
+only** — no third-party requests at runtime, ever. The only network call the app ever
+makes is to its own origin, and only when you create or open a share link, or join a
+co-editing room. ([Yjs](https://yjs.dev), the CRDT behind co-editing, is a fourth —
+bundled into its own chunk that is fetched only when you actually open a room, so a
+reader never downloads it.)
 
 ## Develop locally
 
@@ -65,8 +73,9 @@ npm run preview      # serves ./dist → http://localhost:4173
 ```
 
 The Vite dev server doesn't run the Worker, so `/api/*` isn't there and sharing is
-unavailable under `npm run dev`. To exercise the share flow locally, run the real
-thing (KV is simulated on disk, no Cloudflare account needed):
+unavailable under `npm run dev`. To exercise sharing or co-editing locally, run the
+real thing (KV and Durable Objects are both simulated on disk, no Cloudflare account
+needed):
 
 ```bash
 npm run dev:worker   # vite build && wrangler dev → http://localhost:8787
@@ -113,6 +122,10 @@ Paste the returned ids into `kv_namespaces` in `wrangler.jsonc` (and the non-pre
 into `env.production.kv_namespaces`). They're separate namespaces because shares expire
 and vaults don't, and so you can run one feature without the other.
 
+**Co-editing needs no namespace.** Its Durable Object is declared in `wrangler.jsonc` and
+created by the migration on your first deploy, so a fork gets live collaboration with no
+extra setup — provided Durable Objects are enabled on your Cloudflare plan.
+
 **Sign-in emails go through [ToSend](https://tosend.com/docs/api/send-email/).** Set these
 as secrets:
 
@@ -150,8 +163,9 @@ npx wrangler pages deploy dist --project-name markread
 command `npm run build`, output directory `dist`.
 
 > Pages deploys the static reader only — it doesn't pick up `worker/index.js`, so
-> `/api/*` won't exist and stored share links won't work. Self-contained links still
-> do, since they never touch a server. Use the Workers path above for full sharing.
+> `/api/*` won't exist: stored share links and co-editing rooms won't work.
+> Self-contained links still do, since they never touch a server. Use the Workers path
+> above for full sharing.
 
 ## Keyboard shortcuts
 
@@ -177,12 +191,14 @@ src/
                       save, markdown, recents, scroll, view, ui, keyboard, …
     crypto.js         AES-GCM, gzip, and PBKDF2 primitives (pure, no app state)
     share.js          bundle format, share dialog, and the shared-link viewer
+    collab.js         live co-editing — the CRDT, the textarea binding, the room socket
     vault.js          sign-in, master-password unlock, and share-list sync
   styles/             SCSS partials assembled by main.scss (themes, typography, layout)
 public/               static assets copied verbatim: icons, manifest, og-image
 worker/
   index.js            router — everything non-/api/* goes straight to assets
   shares.js           share ciphertext, with TTL and a delete token
+  room.js             one Durable Object per co-editing room; relays sealed updates
   auth.js             magic links and sessions; stores SHA-256(email), never the address
   vault.js            one opaque blob per account
   email.js            mail adapter — ToSend, or the log in development
@@ -218,6 +234,32 @@ is designed so that opting in doesn't cost you the guarantee:
 The trade-off worth knowing: **the link _is_ the password.** Anyone who has it can read
 the document, so treat it accordingly — and because the key never leaves your side, a
 lost link cannot be recovered by us. Being unable to help is the point.
+
+### Live co-editing
+
+Co-editing does **not** trade the guarantee away, because the unit of sync is not the
+document — it's a CRDT update, a few dozen bytes for a burst of typing, sealed on its
+own. Merging happens in each browser after decryption, so the relay never needs to
+understand a message to pass it on. Measured on a real session: a 19-byte update costs
+49 bytes on the wire, the extra 30 being the nonce and auth tag. The whole document only
+crosses when you join a room — exactly as it would without encryption.
+
+The relay is one Cloudflare **Durable Object** per room. It holds the open sockets and an
+append-only log of ciphertext, and it fans frames out in the order it got them. When the
+log gets long it asks a connected client to collapse it, because only the clients hold
+the key.
+
+What it does see, and what it doesn't:
+
+- **Not** the document, the edits, or the filename — those are inside the sealed frames.
+- It does see **metadata**: how many people are connected, from which IPs, and the size
+  and timing of frames. It can tell that someone is typing, never what.
+- The **link is the capability**, as with shares: anyone who has it can edit, and there
+  is no per-person revocation — changing who's in means a new room and a new link.
+- Rooms **delete themselves after 30 days** without traffic.
+
+Not there yet: no cursors or presence for other people, so two people editing the same
+sentence won't see each other coming.
 
 ### Accounts and the vault
 

@@ -48,3 +48,15 @@ html[data-theme="night"] .btn--primary { color: #1a1610; }
 .btn--primary:hover { filter: brightness(1.06); }
 .btn--ghost { border-color: transparent; color: var(--ink-soft); }
 .btn--ghost:hover { color: var(--accent); }
+
+/* The fourth feature spans the row: the grid is three columns, so a lone card
+   on a second row would read as an accident rather than a highlight. */
+.wf--wide { grid-column: 1 / -1; }
+.wf__tag {
+  margin-left: .45rem; padding: .08rem .38rem;
+  border: 1px solid var(--line); border-radius: 5px;
+  background: var(--paper); color: var(--accent);
+  font-family: var(--sans); font-size: .62rem; font-style: normal;
+  font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
+  vertical-align: middle;
+}
