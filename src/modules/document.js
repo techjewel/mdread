@@ -23,7 +23,8 @@ export async function openDoc(file) {
       else if (file.file) file.content = await file.file.text();
       else file.content = "";
     } catch (e) {
-      toast("Could not read file");
+      console.warn("openDoc", file.path, e);
+      toast(`Could not read file (${e.name || "error"})`);
       return;
     }
   }
